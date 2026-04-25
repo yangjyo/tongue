@@ -1116,24 +1116,47 @@ async function startRecording(which) {
     return;
   }
 
-  let mimeType = '';
-  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
-  for (const c of candidates) {
-    if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) { mimeType = c; break; }
+  // Pick the best supported audio format. iPhone Safari refuses webm and
+  // produces mp4 / aac, so we let the browser pick its native format.
+  const supportedTypes = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/aac',
+    'audio/wav',
+    '',  // empty string = let the browser choose its default
+  ];
+  let selectedType = '';
+  for (const type of supportedTypes) {
+    if (type === '' || (window.MediaRecorder && MediaRecorder.isTypeSupported(type))) {
+      selectedType = type;
+      break;
+    }
   }
 
   state.audioChunks = [];
-  state.mediaRecorder = mimeType
-    ? new MediaRecorder(state.micStream, { mimeType })
-    : new MediaRecorder(state.micStream);
+  const recorderOptions = selectedType ? { mimeType: selectedType } : {};
+  state.mediaRecorder = new MediaRecorder(state.micStream, recorderOptions);
 
   state.mediaRecorder.ondataavailable = e => {
     if (e.data.size > 0) state.audioChunks.push(e.data);
   };
   state.mediaRecorder.onstop = () => {
-    const mime = state.mediaRecorder.mimeType || 'audio/webm';
-    const ext = mime.includes('mp4') ? 'mp4' : mime.includes('ogg') ? 'ogg' : 'webm';
-    const blob = new Blob(state.audioChunks, { type: mime });
+    // Use the actual mimeType the recorder produced — not what we asked for.
+    // Safari may downgrade or alter the requested type silently.
+    const actualType = state.mediaRecorder.mimeType || 'audio/webm';
+    const blob = new Blob(state.audioChunks, { type: actualType });
+
+    // Derive a filename extension that matches what the bytes actually are,
+    // so Whisper accepts the upload.
+    let ext = 'webm';
+    if      (actualType.includes('mp4'))  ext = 'mp4';
+    else if (actualType.includes('mpeg')) ext = 'mp3';
+    else if (actualType.includes('aac'))  ext = 'aac';
+    else if (actualType.includes('wav'))  ext = 'wav';
+    else if (actualType.includes('ogg'))  ext = 'ogg';
+
     if (state.micStream) state.micStream.getTracks().forEach(t => t.stop());
 
     const phase = state.recording;
@@ -1307,7 +1330,8 @@ function playAudioOn(which) {
    ========================================================= */
 async function transcribe(blob, ext) {
   const fd = new FormData();
-  fd.append('file', blob, `speech.${ext}`);
+  const filename = `audio.${ext}`;
+  fd.append('file', blob, filename);
   fd.append('model', MODELS.whisper);
   const res = await fetch(ENDPOINTS.whisper, {
     method: 'POST',
