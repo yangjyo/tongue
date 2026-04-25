@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tongue · The Mirror</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,300;1,9..144,400&family=JetBrains+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0c0a;
+    --bg-soft: #161310;
+    --paper: #1d1813;
+    --ink: #f3ebde;
+    --ink-dim: #9b9286;
+    --ink-faint: #5a5246;
+    --rule: #2a241d;
+    --amber: #e8a04a;
+    --amber-deep: #c97a1f;
+    --azure: #5a8db8;
+    --azure-deep: #3d6a91;
+    --crimson: #c4513b;
+    --moss: #7a9c5f;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* film-grain noise */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    opacity: 0.06;
+    pointer-events: none;
+    z-index: 100;
+    mix-blend-mode: overlay;
+  }
+
+  /* warm radial glow */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse 80% 50% at 50% 35%, rgba(232,160,74,0.07), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 28px 40px 0;
+    z-index: 1;
+  }
+
+  /* ---------- HEADER ---------- */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .brand {
+    font-family: 'Fraunces', serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .brand .dot {
+    width: 8px; height: 8px;
+    background: var(--amber);
+    border-radius: 50%;
+    display: inline-block;
+    transform: translateY(-2px);
+    box-shadow: 0 0 12px var(--amber);
+  }
+  .brand em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    margin-left: 6px;
+  }
+
+  .header-spacer { width: 1px; height: 1px; }
+
+  /* ---------- MAIN ---------- */
+  main {
+    padding: 50px 0 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* STAGE LABEL */
+  .stage-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .stage-label::before, .stage-label::after {
+    content: '';
+    width: 36px;
+    height: 1px;
+    background: var(--rule);
+  }
+  .stage-label .num {
+    color: var(--amber);
+    font-style: italic;
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* ---------- PHASE ---------- */
+  .phase {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeUp 0.5s ease;
+  }
+  .phase.active { display: flex; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .headline {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(36px, 5.5vw, 56px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 12px;
+    max-width: 640px;
+  }
+  .headline em {
+    font-style: italic;
+    color: var(--amber);
+    font-weight: 400;
+  }
+
+  .subhead {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ink-dim);
+    margin-bottom: 44px;
+    max-width: 460px;
+  }
+
+  /* MIC BUTTON */
+  .mic-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }
+
+  .mic-rings {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .mic-rings::before,
+  .mic-rings::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--rule);
+    border-radius: 50%;
+    transition: opacity 0.4s ease;
+    opacity: 0;
+  }
+  .mic-rings::after {
+    inset: -14px;
+    border-color: rgba(232,160,74,0.2);
+  }
+
+  .mic-wrap.recording .mic-rings::before {
+    border-color: var(--amber);
+    opacity: 1;
+    animation: pulseRing 1.4s ease-out infinite;
+  }
+  .mic-wrap.recording .mic-rings::after {
+    border-color: var(--amber-deep);
+    opacity: 1;
+    animation: pulseRing 1.4s ease-out infinite 0.3s;
+  }
+  @keyframes pulseRing {
+    0%   { transform: scale(1);   opacity: 0.9; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
+
+  .mic {
+    border-radius: 50%;
+    border: none;
+    background: radial-gradient(circle at 30% 30%, #2a221a, #14100c);
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      inset 0 -10px 30px rgba(0,0,0,0.5),
+      0 20px 60px rgba(0,0,0,0.5),
+      0 0 0 1px var(--rule);
+    transition: transform 0.15s ease, box-shadow 0.3s ease;
+    font-family: inherit;
+  }
+  .mic.large { width: 156px; height: 156px; }
+  .mic.medium { width: 96px; height: 96px; }
+  .mic:hover { transform: scale(1.02); }
+  .mic:active { transform: scale(0.97); }
+
+  .mic.recording {
+    background: radial-gradient(circle at 30% 30%, #d77835, #8a3e10);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.15),
+      inset 0 -10px 30px rgba(0,0,0,0.4),
+      0 20px 60px rgba(232,160,74,0.4),
+      0 0 0 1px var(--amber-deep);
+  }
+  .mic.processing {
+    background: radial-gradient(circle at 30% 30%, #1d1813, #0e0c0a);
+    cursor: wait;
+  }
+
+  .mic svg {
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .mic.large svg { width: 52px; height: 52px; }
+  .mic.medium svg { width: 36px; height: 36px; }
+
+  .mic-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    height: 16px;
+    margin-top: 22px;
+  }
+  .mic-label .key {
+    color: var(--ink-faint);
+    margin-left: 8px;
+  }
+
+  /* ---------- PHASE: MIRROR ---------- */
+  #phaseMirror {
+    width: 100%;
+    max-width: 720px;
+  }
+
+  .you-said {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    padding: 14px 0 14px 18px;
+    border-left: 2px solid var(--rule);
+    margin-bottom: 40px;
+    text-align: left;
+    position: relative;
+  }
+  .you-said .tag {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* Natural sentence — the hero */
+  .natural-stage {
+    margin-bottom: 50px;
+    text-align: center;
+  }
+  .natural-stage .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .natural-stage .label::before,
+  .natural-stage .label::after {
+    content: '';
+    width: 24px; height: 1px;
+    background: var(--amber);
+    opacity: 0.4;
+  }
+  .natural {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: clamp(30px, 4.2vw, 44px);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    max-width: 680px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .natural .quote-mark {
+    color: var(--amber);
+    font-style: italic;
+    opacity: 0.6;
+  }
+  .natural.speaking::after {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    margin-left: 12px;
+    animation: speakDot 0.8s ease infinite alternate;
+    transform: translateY(-8px);
+    box-shadow: 0 0 12px var(--amber);
+  }
+  @keyframes speakDot {
+    from { opacity: 0.3; transform: translateY(-8px) scale(0.8); }
+    to   { opacity: 1;   transform: translateY(-8px) scale(1.1); }
+  }
+
+  /* repeat zone */
+  .repeat-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 40px;
+  }
+
+  /* compare buttons */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto 8px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    pointer-events: none;
+  }
+  .compare.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .compare-btn {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 22px 18px;
+    cursor: pointer;
+    transition: transform 0.08s ease, border-color 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+    color: var(--ink);
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .compare-btn:active { transform: scale(0.98); }
+  .compare-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .compare-btn .play-icon {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .compare-btn .play-icon svg {
+    width: 16px; height: 16px;
+    fill: currentColor;
+    margin-left: 2px;
+  }
+
+  .compare-btn .play-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .compare-btn .play-text .name {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .compare-btn .play-text .key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  /* Target = azure */
+  .compare-btn.target { border-color: rgba(90,141,184,0.35); }
+  .compare-btn.target .play-icon {
+    background: rgba(90,141,184,0.12);
+    color: var(--azure);
+    border: 1px solid rgba(90,141,184,0.3);
+  }
+  .compare-btn.target:hover:not(:disabled) {
+    border-color: var(--azure);
+    box-shadow: 0 8px 30px rgba(90,141,184,0.15);
+  }
+  .compare-btn.target.playing {
+    border-color: var(--azure);
+    background: linear-gradient(180deg, rgba(90,141,184,0.18), rgba(90,141,184,0.06));
+    box-shadow: 0 0 0 1px var(--azure), 0 12px 40px rgba(90,141,184,0.25);
+  }
+  .compare-btn.target.playing .play-icon {
+    background: var(--azure);
+    color: white;
+    box-shadow: 0 0 20px rgba(90,141,184,0.6);
+  }
+
+  /* You = amber */
+  .compare-btn.you { border-color: rgba(232,160,74,0.35); }
+  .compare-btn.you .play-icon {
+    background: rgba(232,160,74,0.12);
+    color: var(--amber);
+    border: 1px solid rgba(232,160,74,0.3);
+  }
+  .compare-btn.you:hover:not(:disabled) {
+    border-color: var(--amber);
+    box-shadow: 0 8px 30px rgba(232,160,74,0.15);
+  }
+  .compare-btn.you.playing {
+    border-color: var(--amber);
+    background: linear-gradient(180deg, rgba(232,160,74,0.18), rgba(232,160,74,0.06));
+    box-shadow: 0 0 0 1px var(--amber), 0 12px 40px rgba(232,160,74,0.25);
+  }
+  .compare-btn.you.playing .play-icon {
+    background: var(--amber);
+    color: var(--bg);
+    box-shadow: 0 0 20px rgba(232,160,74,0.6);
+  }
+
+  /* progress sweep */
+  .compare-btn .sweep {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    width: 0%;
+    background: currentColor;
+    opacity: 0;
+    transition: width linear;
+  }
+  .compare-btn.target.playing .sweep { background: var(--azure); opacity: 0.6; }
+  .compare-btn.you.playing .sweep { background: var(--amber); opacity: 0.6; }
+
+  .compare-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    text-align: center;
+    margin-top: 18px;
+    opacity: 0;
+    transition: opacity 0.4s 0.2s;
+  }
+  .compare-hint.visible { opacity: 1; }
+
+  /* ---------- NEW SENTENCE button (the exit door) ---------- */
+  .next-zone {
+    margin-top: 56px;
+    padding-top: 36px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+  }
+  .next-zone::before {
+    content: '❦';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg);
+    color: var(--amber);
+    font-size: 14px;
+    padding: 0 12px;
+    opacity: 0.7;
+  }
+
+  .next-btn {
+    position: relative;
+    background: linear-gradient(180deg, rgba(232,160,74,0.10), rgba(232,160,74,0.03));
+    border: 1px solid var(--amber-deep);
+    border-radius: 3px;
+    padding: 18px 38px;
+    cursor: pointer;
+    color: var(--amber);
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 18px;
+    transition: transform 0.15s ease, background 0.25s, box-shadow 0.25s, border-color 0.25s;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.04),
+      0 8px 24px rgba(232,160,74,0.10);
+    overflow: hidden;
+  }
+
+  /* subtle ambient pulse so the eye finds it */
+  .next-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 0 0 rgba(232,160,74,0.5);
+    pointer-events: none;
+    animation: nextPulse 2.6s ease-out infinite;
+  }
+  @keyframes nextPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(232,160,74,0.45); }
+    70%  { box-shadow: 0 0 0 14px rgba(232,160,74,0); }
+    100% { box-shadow: 0 0 0 0 rgba(232,160,74,0); }
+  }
+
+  .next-btn:hover {
+    background: linear-gradient(180deg, rgba(232,160,74,0.22), rgba(232,160,74,0.08));
+    border-color: var(--amber);
+    color: var(--ink);
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 14px 36px rgba(232,160,74,0.28);
+  }
+  .next-btn:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .next-btn .next-icon {
+    font-size: 22px;
+    line-height: 1;
+    display: inline-block;
+    transition: transform 0.5s ease;
+  }
+  .next-btn:hover .next-icon {
+    transform: rotate(-180deg);
+  }
+
+  .next-btn .next-text {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  .next-btn .next-key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    padding: 5px 9px;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    line-height: 1;
+    transition: all 0.25s;
+  }
+  .next-btn:hover .next-key {
+    color: var(--amber);
+    border-color: rgba(232,160,74,0.5);
+  }
+
+  /* ---------- Reset Context — secondary, low-key sibling ---------- */
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 11px 16px;
+    cursor: pointer;
+    color: var(--ink-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.25s, border-color 0.25s, background 0.25s, transform 0.15s;
+    line-height: 1;
+  }
+  .reset-btn:hover {
+    color: var(--ink-dim);
+    border-color: var(--ink-faint);
+    background: rgba(255,255,255,0.02);
+  }
+  .reset-btn:active {
+    transform: scale(0.97);
+  }
+  .reset-btn .reset-icon {
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0.7;
+    display: inline-block;
+    transition: transform 0.3s;
+  }
+  .reset-btn:hover .reset-icon {
+    transform: rotate(90deg);
+    opacity: 1;
+  }
+  /* brief flash when context cleared */
+  .reset-btn.flashed {
+    color: var(--amber);
+    border-color: var(--amber);
+    background: rgba(232,160,74,0.08);
+  }
+
+  /* small toast that says "Context cleared" — separate from error toast */
+  .ctx-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--paper);
+    color: var(--amber);
+    padding: 10px 18px;
+    border: 1px solid rgba(232,160,74,0.4);
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    opacity: 0;
+    z-index: 200;
+    pointer-events: none;
+  }
+  .ctx-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  /* loading state */
+  .processing-msg {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--ink-dim);
+    margin-top: 30px;
+    height: 28px;
+  }
+  .processing-msg .dots span {
+    animation: blink 1.2s infinite;
+    opacity: 0.3;
+  }
+  .processing-msg .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .processing-msg .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  /* toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--crimson);
+    color: white;
+    padding: 12px 22px;
+    border-radius: 2px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    transition: transform 0.4s ease;
+    z-index: 200;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* footer */
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 18px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+  footer .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--moss);
+    display: inline-block;
+    margin-right: 8px;
+    box-shadow: 0 0 8px var(--moss);
+  }
+  footer .status-dot.busy { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  footer .status-dot.error { background: var(--crimson); box-shadow: 0 0 8px var(--crimson); }
+
+  @media (max-width: 720px) {
+    .app { padding: 20px 22px 0; }
+    main { padding: 30px 0 30px; }
+    .compare { grid-template-columns: 1fr; gap: 12px; }
+    .compare-btn { padding: 18px 16px; }
+    .compare-btn .play-text .name { font-size: 19px; }
+    .you-said { font-size: 16px; margin-bottom: 28px; }
+    .natural-stage { margin-bottom: 36px; }
+    .mic.large { width: 130px; height: 130px; }
+    .mic.large svg { width: 42px; height: 42px; }
+    .mic.medium { width: 80px; height: 80px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============== HEADER ============== -->
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      Tongue
+      <em>— a sound mirror</em>
+    </div>
+    <div class="header-spacer"></div>
+  </header>
+
+  <!-- ============== MAIN ============== -->
+  <main>
+
+    <!-- ===== PHASE 1: SPEAK ===== -->
+    <section class="phase active" id="phaseSpeak">
+      <div class="stage-label"><span class="num">i.</span> Speak</div>
+      <h1 class="headline">Say it <em>however</em> you can.</h1>
+      <p class="subhead">Broken English, half Chinese — doesn't matter. We'll hand you the words a native would use.</p>
+
+      <div class="mic-wrap" id="speakMicWrap">
+        <div class="mic-rings"></div>
+        <button class="mic large" id="speakMic" aria-label="Hold to speak">
+          <svg viewBox="0 0 24 24">
+            <rect x="9" y="3" width="6" height="12" rx="3"/>
+            <path d="M5 11a7 7 0 0 0 14 0"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
+          </svg>
+        </button>
+      </div>
+      <div class="mic-label" id="speakLabel">
+        Hold to speak <span class="key">— or hold SPACE</span>
+      </div>
+
+      <div class="processing-msg" id="processingMsg"></div>
+    </section>
+
+    <!-- ===== PHASE 2: MIRROR ===== -->
+    <section class="phase" id="phaseMirror">
+
+      <div class="you-said">
+        <span class="tag">You said</span>
+        <span id="youSaidText"></span>
+      </div>
+
+      <div class="natural-stage">
+        <div class="label">The natural way</div>
+        <div class="natural" id="naturalText">
+          <span class="quote-mark">“</span><span id="naturalSentence"></span><span class="quote-mark">”</span>
+        </div>
+      </div>
+
+      <div class="repeat-zone">
+        <div class="stage-label"><span class="num">ii.</span> Repeat aloud</div>
+        <div class="mic-wrap" id="repeatMicWrap">
+          <div class="mic-rings"></div>
+          <button class="mic medium" id="repeatMic" aria-label="Hold to repeat">
+            <svg viewBox="0 0 24 24">
+              <rect x="9" y="3" width="6" height="12" rx="3"/>
+              <path d="M5 11a7 7 0 0 0 14 0"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+            </svg>
+          </button>
+        </div>
+        <div class="mic-label" id="repeatLabel">
+          Hold to repeat <span class="key">— or hold SPACE</span>
+        </div>
+      </div>
+
+      <div class="compare" id="compareBox">
+        <button class="compare-btn target" id="targetBtn" data-key="A">
+          <div class="play-icon">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <div class="play-text">
+            <span class="name">Target</span>
+            <span class="key">Press A</span>
+          </div>
+          <div class="sweep"></div>
+        </button>
+        <button class="compare-btn you" id="youBtn" data-key="S">
+          <div class="play-icon">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <div class="play-text">
+            <span class="name">You</span>
+            <span class="key">Press S</span>
+          </div>
+          <div class="sweep"></div>
+        </button>
+      </div>
+
+      <div class="compare-hint" id="compareHint">A · S · A · S — listen until it clicks</div>
+
+      <div class="next-zone" id="nextZone">
+        <button class="next-btn" id="newBtn" aria-label="Start a new sentence">
+          <span class="next-icon">↻</span>
+          <span class="next-text">Speak Another</span>
+          <span class="next-key">Press N</span>
+        </button>
+        <button class="reset-btn" id="resetCtxBtn" aria-label="Reset emotional context">
+          <span class="reset-icon">×</span>
+          <span class="reset-text">Reset Context</span>
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ============== FOOTER ============== -->
+  <footer>
+    <div><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></div>
+    <div>Whisper · GPT · TTS</div>
+  </footer>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="ctx-toast" id="ctxToast">Context cleared</div>
+
+<script>
+/* =========================================================
+   API CONFIG — fill in your keys here
+   ========================================================= */
+// GPTsAPI — used for Whisper (STT) and GPT (chat)
+const API_KEY = "sk-j4h38e74500835ecc89d508f61c0dc30f18aeaf2744UyWVy";
+const BASE_URL = "https://api.gptsapi.net";
+
+// ElevenLabs — used for TTS only
+const ELEVENLABS_API_KEY = "sk_6a6814a489907dfc56b5008ea7b99ac606deb5942823d660";
+const ELEVENLABS_VOICE_ID = "UgBBYS2sOqTuMpoF3BR0";
+
+const ENDPOINTS = {
+  whisper: `${BASE_URL}/v1/audio/transcriptions`,
+  chat:    `${BASE_URL}/v1/chat/completions`,
+};
+
+const MODELS = {
+  whisper: "whisper-1",
+  chat:    "gpt-4o-mini",
+};
+
+const SYSTEM_PROMPT = `You help an English language learner speak naturally. The user will give you a broken English sentence or Chinese meaning. You return ONE natural everyday English sentence (under 15 words) that a native speaker would actually say.
+
+You will see recent conversation history. Use it ONLY to detect the user's current emotional tone. Do NOT continue the conversation, do NOT ask questions, do NOT give advice.
+
+Based on detected tone, add ElevenLabs v3 audio tags:
+- Default (neutral/casual): just use [emphasizes]...[/emphasizes] around the key word, with ... before it for a brief pause
+- Tired/down: add [softly] at the start
+- Excited/happy: add [excited] at the start
+- Frustrated/annoyed: add [sighs] at the start
+
+Examples:
+
+Context shows user is tired:
+Input: 'I want sleep now'
+Output: '[softly] I just want to ... [emphasizes]crash[/emphasizes].'
+
+Context shows user is excited:
+Input: 'so happy today'
+Output: '[excited] I'm absolutely ... [emphasizes]thrilled[/emphasizes]!'
+
+Context shows user is frustrated:
+Input: 'this is bad'
+Output: '[sighs] This is ... [emphasizes]ridiculous[/emphasizes].'
+
+No context or neutral:
+Input: 'how are you'
+Output: 'How ... [emphasizes]are[/emphasizes] you?'
+
+Return ONLY the tagged sentence. No explanations, no questions, no advice.`;
+
+/* Conversation history — used ONLY to detect emotional tone for TTS.
+   Each entry: { userSaid: <transcript>, nativeSaid: <clean sentence> }
+   Capped at 5 turns. Cleared only via Reset Context, never by New Sentence. */
+const HISTORY_LIMIT = 5;
+let conversationHistory = [];
+
+function pushHistory(userSaid, nativeSaid) {
+  conversationHistory.push({ userSaid, nativeSaid });
+  if (conversationHistory.length > HISTORY_LIMIT) {
+    conversationHistory = conversationHistory.slice(-HISTORY_LIMIT);
+  }
+}
+
+function clearHistory() {
+  conversationHistory = [];
+}
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const state = {
+  phase: 'speak',          // 'speak' | 'mirror'
+  recording: null,         // 'speak' | 'repeat' | null
+  busy: false,
+  mediaRecorder: null,
+  audioChunks: [],
+  micStream: null,
+
+  naturalSentence: '',
+  targetAudio: null,
+  targetUrl: null,
+  userRepeatAudio: null,
+  userRepeatUrl: null,
+
+  currentlyPlaying: null,  // 'target' | 'you' | null
+};
+
+/* =========================================================
+   ELEMENTS
+   ========================================================= */
+const $ = id => document.getElementById(id);
+
+const els = {
+  phaseSpeak:    $('phaseSpeak'),
+  phaseMirror:   $('phaseMirror'),
+  speakMic:      $('speakMic'),
+  speakMicWrap:  $('speakMicWrap'),
+  speakLabel:    $('speakLabel'),
+  processingMsg: $('processingMsg'),
+
+  youSaidText:   $('youSaidText'),
+  naturalText:   $('naturalText'),
+  naturalSentence: $('naturalSentence'),
+
+  repeatMic:     $('repeatMic'),
+  repeatMicWrap: $('repeatMicWrap'),
+  repeatLabel:   $('repeatLabel'),
+
+  compareBox:    $('compareBox'),
+  compareHint:   $('compareHint'),
+  targetBtn:     $('targetBtn'),
+  youBtn:        $('youBtn'),
+
+  newBtn:        $('newBtn'),
+  statusDot:     $('statusDot'),
+  statusText:    $('statusText'),
+  toast:         $('toast'),
+  resetCtxBtn:   $('resetCtxBtn'),
+  ctxToast:      $('ctxToast'),
+};
+
+/* =========================================================
+   STATUS / TOAST
+   ========================================================= */
+function setStatus(text, kind = 'ok') {
+  els.statusText.textContent = text;
+  els.statusDot.className = 'status-dot' + (kind === 'busy' ? ' busy' : kind === 'error' ? ' error' : '');
+}
+
+function showToast(msg) {
+  els.toast.textContent = msg;
+  els.toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => els.toast.classList.remove('show'), 3500);
+}
+
+/* =========================================================
+   PHASE TRANSITIONS
+   ========================================================= */
+function gotoPhase(phase) {
+  state.phase = phase;
+  els.phaseSpeak.classList.toggle('active', phase === 'speak');
+  els.phaseMirror.classList.toggle('active', phase === 'mirror');
+}
+
+function resetAll() {
+  stopAllPlayback();
+
+  if (state.targetUrl) URL.revokeObjectURL(state.targetUrl);
+  if (state.userRepeatUrl) URL.revokeObjectURL(state.userRepeatUrl);
+
+  state.naturalSentence = '';
+  state.targetAudio = null;
+  state.targetUrl = null;
+  state.userRepeatAudio = null;
+  state.userRepeatUrl = null;
+
+  els.compareBox.classList.remove('visible');
+  els.compareHint.classList.remove('visible');
+  els.youBtn.disabled = true;
+  els.targetBtn.disabled = true;
+  els.naturalText.classList.remove('speaking');
+
+  els.processingMsg.innerHTML = '';
+  setMicState('speak', 'idle');
+  setMicState('repeat', 'idle');
+  gotoPhase('speak');
+  setStatus('Ready');
+}
+
+/* =========================================================
+   MIC UI
+   ========================================================= */
+function setMicState(which, mode) {
+  const btn  = which === 'speak' ? els.speakMic : els.repeatMic;
+  const wrap = which === 'speak' ? els.speakMicWrap : els.repeatMicWrap;
+  const lbl  = which === 'speak' ? els.speakLabel : els.repeatLabel;
+
+  btn.classList.remove('recording', 'processing');
+  wrap.classList.remove('recording');
+
+  if (mode === 'recording') {
+    btn.classList.add('recording');
+    wrap.classList.add('recording');
+    lbl.innerHTML = which === 'speak'
+      ? 'Listening… <span class="key">release to send</span>'
+      : 'Listening… <span class="key">release to compare</span>';
+  } else if (mode === 'processing') {
+    btn.classList.add('processing');
+    lbl.innerHTML = 'Working…';
+  } else {
+    lbl.innerHTML = which === 'speak'
+      ? 'Hold to speak <span class="key">— or hold SPACE</span>'
+      : 'Hold to repeat <span class="key">— or hold SPACE</span>';
+  }
+}
+
+/* =========================================================
+   RECORDING
+   ========================================================= */
+async function startRecording(which) {
+  if (state.recording || state.busy) return;
+  if (!API_KEY) {
+    showToast('Please set your API_KEY at the top of the file');
+    return;
+  }
+
+  // stop any audio playback when user starts speaking
+  stopAllPlayback();
+
+  try {
+    state.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    showToast('Microphone permission denied');
+    setStatus('Mic blocked', 'error');
+    return;
+  }
+
+  let mimeType = '';
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  for (const c of candidates) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) { mimeType = c; break; }
+  }
+
+  state.audioChunks = [];
+  state.mediaRecorder = mimeType
+    ? new MediaRecorder(state.micStream, { mimeType })
+    : new MediaRecorder(state.micStream);
+
+  state.mediaRecorder.ondataavailable = e => {
+    if (e.data.size > 0) state.audioChunks.push(e.data);
+  };
+  state.mediaRecorder.onstop = () => {
+    const mime = state.mediaRecorder.mimeType || 'audio/webm';
+    const ext = mime.includes('mp4') ? 'mp4' : mime.includes('ogg') ? 'ogg' : 'webm';
+    const blob = new Blob(state.audioChunks, { type: mime });
+    if (state.micStream) state.micStream.getTracks().forEach(t => t.stop());
+
+    const phase = state.recording;
+    state.recording = null;
+
+    if (blob.size < 1000) {
+      setMicState(phase, 'idle');
+      setStatus('Too short — try again', 'error');
+      setTimeout(() => setStatus('Ready'), 1800);
+      return;
+    }
+
+    if (phase === 'speak') handleSpeakDone(blob, ext);
+    else if (phase === 'repeat') handleRepeatDone(blob);
+  };
+
+  state.mediaRecorder.start();
+  state.recording = which;
+  setMicState(which, 'recording');
+  setStatus('Recording', 'busy');
+}
+
+function stopRecording() {
+  if (!state.recording) return;
+  try { state.mediaRecorder.stop(); } catch (e) {}
+}
+
+/* =========================================================
+   PHASE 1 — SPEAK FLOW
+   ========================================================= */
+async function handleSpeakDone(blob, ext) {
+  state.busy = true;
+  setMicState('speak', 'processing');
+  els.processingMsg.innerHTML = 'Transcribing<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+  setStatus('Transcribing', 'busy');
+
+  try {
+    const userText = await transcribe(blob, ext);
+    if (!userText.trim()) throw new Error('Could not hear you. Try again.');
+
+    els.youSaidText.textContent = `“${userText}”`;
+    els.processingMsg.innerHTML = 'Finding the natural way<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+    setStatus('Thinking', 'busy');
+
+    const taggedSentence = await getNaturalSentence(userText, conversationHistory);
+    const displaySentence = stripAudioTags(taggedSentence);
+    state.naturalSentence = displaySentence;
+    els.naturalSentence.textContent = displaySentence;
+
+    // Record this turn for future tone detection. We store the CLEAN nativeSaid
+    // (no tags), because tags are TTS-only and would pollute future prompts.
+    pushHistory(userText, displaySentence);
+
+    els.processingMsg.innerHTML = 'Generating voice<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+    setStatus('Speaking', 'busy');
+
+    const ttsBlob = await ttsToBlob(taggedSentence);
+    state.targetUrl = URL.createObjectURL(ttsBlob);
+    state.targetAudio = new Audio(state.targetUrl);
+
+    els.processingMsg.innerHTML = '';
+    gotoPhase('mirror');
+    els.targetBtn.disabled = false;
+
+    // auto-play target once
+    setStatus('Listen', 'busy');
+    await playAudioOn('target');
+    setStatus('Now repeat');
+  } catch (err) {
+    console.error(err);
+    showToast(err.message || 'Something went wrong');
+    setStatus('Error', 'error');
+    els.processingMsg.innerHTML = '';
+    setMicState('speak', 'idle');
+    setTimeout(() => setStatus('Ready'), 2200);
+  } finally {
+    state.busy = false;
+    setMicState('speak', 'idle');
+  }
+}
+
+/* =========================================================
+   PHASE 2 — REPEAT FLOW
+   ========================================================= */
+async function handleRepeatDone(blob) {
+  // overwrite previous repeat
+  if (state.userRepeatUrl) URL.revokeObjectURL(state.userRepeatUrl);
+
+  state.userRepeatUrl = URL.createObjectURL(blob);
+  state.userRepeatAudio = new Audio(state.userRepeatUrl);
+
+  setMicState('repeat', 'idle');
+  els.youBtn.disabled = false;
+  els.compareBox.classList.add('visible');
+  els.compareHint.classList.add('visible');
+
+  setStatus('Compare freely');
+
+  // auto-play user's repeat once
+  await playAudioOn('you');
+}
+
+/* =========================================================
+   PLAYBACK / COMPARE
+   ========================================================= */
+function stopAllPlayback() {
+  if (state.targetAudio) { try { state.targetAudio.pause(); state.targetAudio.currentTime = 0; } catch(e){} }
+  if (state.userRepeatAudio) { try { state.userRepeatAudio.pause(); state.userRepeatAudio.currentTime = 0; } catch(e){} }
+  els.targetBtn.classList.remove('playing');
+  els.youBtn.classList.remove('playing');
+  els.naturalText.classList.remove('speaking');
+
+  const tSweep = els.targetBtn.querySelector('.sweep');
+  const ySweep = els.youBtn.querySelector('.sweep');
+  if (tSweep) { tSweep.style.transition = 'none'; tSweep.style.width = '0%'; tSweep.style.opacity = ''; }
+  if (ySweep) { ySweep.style.transition = 'none'; ySweep.style.width = '0%'; ySweep.style.opacity = ''; }
+
+  state.currentlyPlaying = null;
+}
+
+function playAudioOn(which) {
+  return new Promise((resolve) => {
+    stopAllPlayback();
+    const audio = which === 'target' ? state.targetAudio : state.userRepeatAudio;
+    const btn   = which === 'target' ? els.targetBtn : els.youBtn;
+    if (!audio) { resolve(); return; }
+
+    state.currentlyPlaying = which;
+    btn.classList.add('playing');
+    if (which === 'target') els.naturalText.classList.add('speaking');
+
+    const sweep = btn.querySelector('.sweep');
+    const setupSweep = () => {
+      const dur = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 2.5;
+      sweep.style.transition = 'none';
+      sweep.style.width = '0%';
+      void sweep.offsetWidth;
+      sweep.style.transition = `width ${dur}s linear`;
+      sweep.style.width = '100%';
+    };
+    if (audio.readyState >= 1) setupSweep();
+    else audio.addEventListener('loadedmetadata', setupSweep, { once: true });
+
+    const finish = () => {
+      btn.classList.remove('playing');
+      els.naturalText.classList.remove('speaking');
+      sweep.style.transition = 'opacity 0.3s';
+      sweep.style.opacity = '0';
+      setTimeout(() => {
+        sweep.style.transition = 'none';
+        sweep.style.width = '0%';
+        sweep.style.opacity = '';
+      }, 350);
+      if (state.currentlyPlaying === which) state.currentlyPlaying = null;
+      resolve();
+    };
+
+    audio.onended = finish;
+    audio.onerror = finish;
+
+    try {
+      audio.currentTime = 0;
+      const p = audio.play();
+      if (p && p.catch) p.catch(finish);
+    } catch (e) { finish(); }
+  });
+}
+
+/* =========================================================
+   API CALLS
+   ========================================================= */
+async function transcribe(blob, ext) {
+  const fd = new FormData();
+  fd.append('file', blob, `speech.${ext}`);
+  fd.append('model', MODELS.whisper);
+  const res = await fetch(ENDPOINTS.whisper, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${API_KEY}` },
+    body: fd,
+  });
+  if (!res.ok) throw new Error(`Transcription failed (${res.status})`);
+  const data = await res.json();
+  return (data.text || '').trim();
+}
+
+/* Strip ElevenLabs v3 audio tags for on-screen display.
+   - remove all [tag] and [/tag] markers (e.g. [emphasizes], [/emphasizes])
+   - remove ... and unicode … pauses (with surrounding spaces)
+   - collapse extra spaces, tidy spacing before punctuation
+   The audio still receives the tagged version unchanged. */
+function stripAudioTags(tagged) {
+  let s = tagged;
+
+  // remove [anything] and [/anything] tags
+  s = s.replace(/\[\/?[^\]]+\]/g, '');
+
+  // remove pause ellipses (ASCII ... and unicode …) along with surrounding spaces
+  s = s.replace(/\s*\.{2,}\s*/g, ' ');
+  s = s.replace(/\s*…\s*/g, ' ');
+
+  // collapse whitespace and tidy spacing before punctuation
+  s = s.replace(/\s+/g, ' ').replace(/\s+([.,!?;:])/g, '$1').trim();
+
+  // sentence-case the very first letter in case it lost its capital
+  if (s.length > 0) s = s[0].toUpperCase() + s.slice(1);
+
+  return s;
+}
+
+async function getNaturalSentence(userText, history = []) {
+  // Expand history into alternating user/assistant turns.
+  // The model sees: prior user transcripts + prior native sentences + current user input.
+  // It does NOT see the audio tags from prior turns — we feed it the clean nativeSaid
+  // so it doesn't confuse tag syntax with conversational content.
+  const historyMessages = [];
+  for (const turn of history) {
+    historyMessages.push({ role: 'user',      content: turn.userSaid });
+    historyMessages.push({ role: 'assistant', content: turn.nativeSaid });
+  }
+
+  const res = await fetch(ENDPOINTS.chat, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: MODELS.chat,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...historyMessages,
+        { role: 'user',   content: userText },
+      ],
+      temperature: 0.5,
+      max_tokens: 60,
+    }),
+  });
+  if (!res.ok) throw new Error(`Chat failed (${res.status})`);
+  const data = await res.json();
+  let text = data.choices?.[0]?.message?.content || '';
+  text = text.trim().replace(/^["'“”]+|["'“”]+$/g, '').trim();
+  if (!text) throw new Error('No sentence returned');
+  return text;
+}
+
+async function ttsToBlob(text) {
+  if (!ELEVENLABS_API_KEY || !ELEVENLABS_VOICE_ID) {
+    throw new Error('ElevenLabs API key or voice ID not set');
+  }
+
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`;
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg',
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_v3',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+          style: 0.55,
+          use_speaker_boost: true,
+        },
+      }),
+    });
+  } catch (networkErr) {
+    throw new Error(`TTS request failed: ${networkErr.message}`);
+  }
+
+  if (!res.ok) {
+    let bodyText = '';
+    try { bodyText = await res.text(); } catch (e) {}
+    if (res.status === 401) {
+      throw new Error('ElevenLabs auth failed — check ELEVENLABS_API_KEY');
+    }
+    if (res.status === 404 || /voice/i.test(bodyText)) {
+      throw new Error('ElevenLabs voice not found — check ELEVENLABS_VOICE_ID');
+    }
+    throw new Error(`ElevenLabs TTS failed (${res.status})`);
+  }
+
+  return await res.blob();
+}
+
+/* =========================================================
+   EVENT BINDINGS
+   ========================================================= */
+// Speak mic
+els.speakMic.addEventListener('mousedown', () => startRecording('speak'));
+els.speakMic.addEventListener('mouseup',   stopRecording);
+els.speakMic.addEventListener('mouseleave',() => { if (state.recording === 'speak') stopRecording(); });
+els.speakMic.addEventListener('touchstart', e => { e.preventDefault(); startRecording('speak'); }, { passive: false });
+els.speakMic.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); }, { passive: false });
+els.speakMic.addEventListener('touchcancel', stopRecording);
+
+// Repeat mic
+els.repeatMic.addEventListener('mousedown', () => startRecording('repeat'));
+els.repeatMic.addEventListener('mouseup',   stopRecording);
+els.repeatMic.addEventListener('mouseleave',() => { if (state.recording === 'repeat') stopRecording(); });
+els.repeatMic.addEventListener('touchstart', e => { e.preventDefault(); startRecording('repeat'); }, { passive: false });
+els.repeatMic.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); }, { passive: false });
+els.repeatMic.addEventListener('touchcancel', stopRecording);
+
+// Compare buttons
+els.targetBtn.addEventListener('click', () => {
+  if (els.targetBtn.disabled) return;
+  playAudioOn('target');
+});
+els.youBtn.addEventListener('click', () => {
+  if (els.youBtn.disabled) return;
+  playAudioOn('you');
+});
+
+// New sentence
+els.newBtn.addEventListener('click', resetAll);
+
+// Reset emotional context (clears history but keeps current sentence)
+function flashContextCleared() {
+  clearHistory();
+  // brief amber flash on the button
+  els.resetCtxBtn.classList.add('flashed');
+  setTimeout(() => els.resetCtxBtn.classList.remove('flashed'), 500);
+  // small toast confirming the action
+  els.ctxToast.classList.add('show');
+  clearTimeout(flashContextCleared._t);
+  flashContextCleared._t = setTimeout(() => els.ctxToast.classList.remove('show'), 1600);
+}
+els.resetCtxBtn.addEventListener('click', flashContextCleared);
+
+// Keyboard
+const isTyping = () => {
+  const t = document.activeElement;
+  return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+};
+
+document.addEventListener('keydown', e => {
+  if (isTyping()) return;
+
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (e.repeat) return; // ignore auto-repeat from holding the key
+    if (state.phase === 'speak') startRecording('speak');
+    else if (state.phase === 'mirror') startRecording('repeat');
+    return;
+  }
+
+  if (e.repeat) return;
+
+  if (state.phase !== 'mirror') return;
+
+  if (e.key === 'a' || e.key === 'A') {
+    e.preventDefault();
+    if (!els.targetBtn.disabled) playAudioOn('target');
+  } else if (e.key === 's' || e.key === 'S') {
+    e.preventDefault();
+    if (!els.youBtn.disabled) playAudioOn('you');
+  } else if (e.key === 'n' || e.key === 'N') {
+    e.preventDefault();
+    resetAll();
+  }
+});
+
+document.addEventListener('keyup', e => {
+  if (isTyping()) return;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    stopRecording();
+  }
+});
+
+// Init
+setStatus('Ready');
+if (!API_KEY) {
+  setStatus('Set API key in source', 'error');
+}
+</script>
+</body>
+</html>
