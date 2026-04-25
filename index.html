@@ -892,7 +892,8 @@
   </footer>
 
 </div>
-
+<audio id="targetAudioEl" preload="auto" playsinline style="display:none"></audio>
+<audio id="userAudioEl" preload="auto" playsinline style="display:none"></audio>
 <div class="toast" id="toast"></div>
 <div class="ctx-toast" id="ctxToast">Context cleared</div>
 
@@ -985,9 +986,7 @@ const state = {
   micStream: null,
 
   naturalSentence: '',
-  targetAudio: null,
   targetUrl: null,
-  userRepeatAudio: null,
   userRepeatUrl: null,
 
   currentlyPlaying: null,  // 'target' | 'you' | null
@@ -1024,6 +1023,8 @@ const els = {
   statusText:    $('statusText'),
   toast:         $('toast'),
   resetCtxBtn:   $('resetCtxBtn'),
+  targetAudioEl: $('targetAudioEl'),
+  userAudioEl:   $('userAudioEl'),
   ctxToast:      $('ctxToast'),
 };
 
@@ -1058,11 +1059,12 @@ function resetAll() {
   if (state.userRepeatUrl) URL.revokeObjectURL(state.userRepeatUrl);
 
   state.naturalSentence = '';
-  state.targetAudio = null;
   state.targetUrl = null;
-  state.userRepeatAudio = null;
   state.userRepeatUrl = null;
-
+  els.targetAudioEl.removeAttribute('src');
+  els.userAudioEl.removeAttribute('src');
+  els.targetAudioEl.load();
+  els.userAudioEl.load();
   els.compareBox.classList.remove('visible');
   els.compareHint.classList.remove('visible');
   els.youBtn.disabled = true;
@@ -1237,7 +1239,8 @@ async function handleSpeakDone(blob, ext) {
 
     const ttsBlob = await ttsToBlob(taggedSentence);
     state.targetUrl = URL.createObjectURL(ttsBlob);
-    state.targetAudio = new Audio(state.targetUrl);
+    els.targetAudioEl.src = state.targetUrl;
+    els.targetAudioEl.load();
 
     els.processingMsg.innerHTML = '';
     gotoPhase('mirror');
@@ -1268,7 +1271,8 @@ async function handleRepeatDone(blob) {
   if (state.userRepeatUrl) URL.revokeObjectURL(state.userRepeatUrl);
 
   state.userRepeatUrl = URL.createObjectURL(blob);
-  state.userRepeatAudio = new Audio(state.userRepeatUrl);
+  els.userAudioEl.src = state.userRepeatUrl;
+  els.userAudioEl.load();
 
   setMicState('repeat', 'idle');
   els.youBtn.disabled = false;
@@ -1285,8 +1289,8 @@ async function handleRepeatDone(blob) {
    PLAYBACK / COMPARE
    ========================================================= */
 function stopAllPlayback() {
-  if (state.targetAudio) { try { state.targetAudio.pause(); state.targetAudio.currentTime = 0; } catch(e){} }
-  if (state.userRepeatAudio) { try { state.userRepeatAudio.pause(); state.userRepeatAudio.currentTime = 0; } catch(e){} }
+  try { els.targetAudioEl.pause(); els.targetAudioEl.currentTime = 0; } catch(e){}
+  try { els.userAudioEl.pause(); els.userAudioEl.currentTime = 0; } catch(e){}
   els.targetBtn.classList.remove('playing');
   els.youBtn.classList.remove('playing');
   els.naturalText.classList.remove('speaking');
@@ -1302,7 +1306,7 @@ function stopAllPlayback() {
 function playAudioOn(which) {
   return new Promise((resolve) => {
     stopAllPlayback();
-    const audio = which === 'target' ? state.targetAudio : state.userRepeatAudio;
+    const audio = which === 'target' ? els.targetAudioEl : els.userAudioEl;
     const btn   = which === 'target' ? els.targetBtn : els.youBtn;
     if (!audio) { resolve(); return; }
 
@@ -1556,10 +1560,18 @@ async function ttsToBlob(text) {
    ========================================================= */
 function unlockAudioOnce() {
   if (audioUnlocked) return;
-  const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-  silentAudio.play().then(() => {
+  // 关键：在用户手势的同步上下文里，对真正要用的 <audio> 元素调用 .load()
+  // 然后立刻 .play() + .pause()。这给两个元素都打上"用户激活"标记。
+  // 此后即使 src 被替换、即使经过 async 等待，play() 仍被允许。
+  try {
+    els.targetAudioEl.load();
+    els.userAudioEl.load();
+    const p1 = els.targetAudioEl.play();
+    const p2 = els.userAudioEl.play();
+    if (p1 && p1.then) p1.then(() => els.targetAudioEl.pause()).catch(() => {});
+    if (p2 && p2.then) p2.then(() => els.userAudioEl.pause()).catch(() => {});
     audioUnlocked = true;
-  }).catch(() => {});
+  } catch (e) {}
 }
 
 /* =========================================================
