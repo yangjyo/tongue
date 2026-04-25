@@ -966,6 +966,14 @@ function clearHistory() {
 }
 
 /* =========================================================
+   iOS AUDIO UNLOCK — Safari blocks audio.play() unless it
+   originates synchronously from a user gesture. We unlock
+   once on the first mic press by playing a silent WAV in the
+   same synchronous tick as the touchstart/mousedown event.
+   ========================================================= */
+let audioUnlocked = false;
+
+/* =========================================================
    STATE
    ========================================================= */
 const state = {
@@ -1539,21 +1547,37 @@ async function ttsToBlob(text) {
 }
 
 /* =========================================================
+   iOS AUDIO UNLOCK HELPER — must be called SYNCHRONOUSLY
+   from inside a user gesture (mousedown / touchstart). Plays
+   a tiny silent WAV; once that play() resolves, iOS treats
+   the page as audio-unlocked for the rest of the session,
+   so subsequent audio.play() calls (even after async/await)
+   work without further user gestures.
+   ========================================================= */
+function unlockAudioOnce() {
+  if (audioUnlocked) return;
+  const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+  silentAudio.play().then(() => {
+    audioUnlocked = true;
+  }).catch(() => {});
+}
+
+/* =========================================================
    EVENT BINDINGS
    ========================================================= */
 // Speak mic
-els.speakMic.addEventListener('mousedown', () => startRecording('speak'));
+els.speakMic.addEventListener('mousedown', () => { unlockAudioOnce(); startRecording('speak'); });
 els.speakMic.addEventListener('mouseup',   stopRecording);
 els.speakMic.addEventListener('mouseleave',() => { if (state.recording === 'speak') stopRecording(); });
-els.speakMic.addEventListener('touchstart', e => { e.preventDefault(); startRecording('speak'); }, { passive: false });
+els.speakMic.addEventListener('touchstart', e => { unlockAudioOnce(); e.preventDefault(); startRecording('speak'); }, { passive: false });
 els.speakMic.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); }, { passive: false });
 els.speakMic.addEventListener('touchcancel', stopRecording);
 
 // Repeat mic
-els.repeatMic.addEventListener('mousedown', () => startRecording('repeat'));
+els.repeatMic.addEventListener('mousedown', () => { unlockAudioOnce(); startRecording('repeat'); });
 els.repeatMic.addEventListener('mouseup',   stopRecording);
 els.repeatMic.addEventListener('mouseleave',() => { if (state.recording === 'repeat') stopRecording(); });
-els.repeatMic.addEventListener('touchstart', e => { e.preventDefault(); startRecording('repeat'); }, { passive: false });
+els.repeatMic.addEventListener('touchstart', e => { unlockAudioOnce(); e.preventDefault(); startRecording('repeat'); }, { passive: false });
 els.repeatMic.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); }, { passive: false });
 els.repeatMic.addEventListener('touchcancel', stopRecording);
 
