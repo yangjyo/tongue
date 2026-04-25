@@ -1142,35 +1142,49 @@ async function startRecording(which) {
   state.mediaRecorder.ondataavailable = e => {
     if (e.data.size > 0) state.audioChunks.push(e.data);
   };
-  state.mediaRecorder.onstop = () => {
+  state.mediaRecorder.onstop = async () => {
     // Use the actual mimeType the recorder produced — not what we asked for.
     // Safari may downgrade or alter the requested type silently.
     const actualType = state.mediaRecorder.mimeType || 'audio/webm';
-    const blob = new Blob(state.audioChunks, { type: actualType });
-
-    // Derive a filename extension that matches what the bytes actually are,
-    // so Whisper accepts the upload.
-    let ext = 'webm';
-    if      (actualType.includes('mp4'))  ext = 'mp4';
-    else if (actualType.includes('mpeg')) ext = 'mp3';
-    else if (actualType.includes('aac'))  ext = 'aac';
-    else if (actualType.includes('wav'))  ext = 'wav';
-    else if (actualType.includes('ogg'))  ext = 'ogg';
+    const rawBlob = new Blob(state.audioChunks, { type: actualType });
 
     if (state.micStream) state.micStream.getTracks().forEach(t => t.stop());
 
     const phase = state.recording;
     state.recording = null;
 
-    if (blob.size < 1000) {
+    if (rawBlob.size < 1000) {
       setMicState(phase, 'idle');
       setStatus('Too short — try again', 'error');
       setTimeout(() => setStatus('Ready'), 1800);
       return;
     }
 
-    if (phase === 'speak') handleSpeakDone(blob, ext);
-    else if (phase === 'repeat') handleRepeatDone(blob);
+    // Re-encode to a clean 16 kHz mono WAV. This guarantees the upload
+    // has a parseable duration field — fixes iPhone Safari's mp4 (which
+    // omits duration metadata) being rejected by some Whisper proxies.
+    setMicState(phase, 'processing');
+    els.processingMsg.innerHTML = 'Processing audio<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+    setStatus('Processing audio', 'busy');
+
+    let uploadBlob = rawBlob;
+    let ext = 'wav';
+    try {
+      uploadBlob = await blobToWav(rawBlob);
+    } catch (err) {
+      // Fallback: if transcoding fails (very rare — usually a corrupt
+      // recording), fall back to the original blob and a derived ext.
+      console.warn('WAV transcode failed, falling back to raw blob:', err);
+      uploadBlob = rawBlob;
+      if      (actualType.includes('mp4'))  ext = 'mp4';
+      else if (actualType.includes('mpeg')) ext = 'mp3';
+      else if (actualType.includes('aac'))  ext = 'aac';
+      else if (actualType.includes('ogg'))  ext = 'ogg';
+      else if (actualType.includes('webm')) ext = 'webm';
+    }
+
+    if (phase === 'speak')  handleSpeakDone(uploadBlob, ext);
+    else if (phase === 'repeat') handleRepeatDone(uploadBlob);
   };
 
   state.mediaRecorder.start();
@@ -1323,6 +1337,81 @@ function playAudioOn(which) {
       if (p && p.catch) p.catch(finish);
     } catch (e) { finish(); }
   });
+}
+
+/* =========================================================
+   AUDIO TRANSCODING — every recording becomes a clean 16 kHz mono WAV
+   before upload. WAV's header makes duration trivially computable, so
+   middlemen that parse "duration" out of the file (some Whisper proxies
+   refuse files where ffprobe returns N/A) accept the upload reliably.
+   ========================================================= */
+async function blobToWav(blob) {
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) throw new Error('Web Audio API not supported');
+  const audioContext = new Ctor();
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    return await audioBufferToWavBlob(audioBuffer);
+  } finally {
+    // free the context — Safari leaks them otherwise
+    if (audioContext.close) { try { audioContext.close(); } catch (e) {} }
+  }
+}
+
+async function audioBufferToWavBlob(buffer) {
+  const numChannels = 1;       // mono — Whisper doesn't need stereo
+  const sampleRate  = 16000;   // Whisper's recommended rate
+
+  const length = Math.max(1, Math.floor(buffer.duration * sampleRate));
+  const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(
+    numChannels, length, sampleRate
+  );
+  const source = offlineCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(offlineCtx.destination);
+  source.start();
+
+  const renderedBuffer = await offlineCtx.startRendering();
+  return encodeWAV(renderedBuffer);
+}
+
+function encodeWAV(audioBuffer) {
+  const numChannels = audioBuffer.numberOfChannels;
+  const sampleRate  = audioBuffer.sampleRate;
+  const samples     = audioBuffer.getChannelData(0);
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view   = new DataView(buffer);
+
+  const writeString = (offset, str) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);            // fmt chunk size
+  view.setUint16(20, 1, true);             // PCM format
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true); // byte rate
+  view.setUint16(32, numChannels * 2, true);              // block align
+  view.setUint16(34, 16, true);            // 16-bit samples
+  writeString(36, 'data');
+  view.setUint32(40, samples.length * 2, true);
+
+  // PCM data
+  let offset = 44;
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    offset += 2;
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' });
 }
 
 /* =========================================================
