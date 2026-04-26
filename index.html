@@ -462,6 +462,58 @@
     to { transform: rotate(360deg); }
   }
 
+  /* word explanation block — Means / Why / Like */
+  .word-card .word-explain {
+    margin-top: 24px;
+    text-align: left;
+  }
+  .word-card .word-explain > div {
+    margin-bottom: 12px;
+  }
+  .word-card .word-explain > div:last-child {
+    margin-bottom: 0;
+  }
+  .word-card .word-explain .label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .word-card .word-explain .text {
+    display: block;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  .word-card .word-explain .we-loading,
+  .word-card .word-explain .we-retry {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-dim);
+    text-align: center;
+    padding: 4px 0;
+  }
+  .word-card .word-explain .we-retry {
+    cursor: pointer;
+    color: var(--ink-faint);
+    transition: color 0.2s;
+  }
+  .word-card .word-explain .we-retry:hover {
+    color: var(--amber);
+  }
+  .word-card .word-explain .we-loading .dots span {
+    animation: blink 1.2s infinite;
+    opacity: 0.3;
+  }
+  .word-card .word-explain .we-loading .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .word-card .word-explain .we-loading .dots span:nth-child(3) { animation-delay: 0.4s; }
+
   /* repeat zone */
   .repeat-zone {
     display: flex;
@@ -927,6 +979,7 @@
         <button class="wc-play" id="wcPlay" aria-label="Play word">
           <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         </button>
+        <div class="word-explain" id="wcExplain"></div>
       </div>
 
       <div class="repeat-zone">
@@ -1142,6 +1195,7 @@ const els = {
   wcWord:        $('wcWord'),
   wcPlay:        $('wcPlay'),
   wcClose:       $('wcClose'),
+  wcExplain:     $('wcExplain'),
 };
 
 /* =========================================================
@@ -1743,6 +1797,8 @@ async function ttsWordToBlob(word) {
 function showWordCard(word) {
   clearTimeout(wordState.fadeTimer);
   els.wcWord.textContent = word;
+  // clear any explanation from a previous word — it'll be filled by loadAndShowExplain
+  els.wcExplain.innerHTML = '';
   els.wordCard.style.display = 'block';
   // force reflow then add visible class so the opacity transition runs
   void els.wordCard.offsetWidth;
@@ -1769,19 +1825,138 @@ function setWcPlayLoading(loading) {
   els.wcPlay.disabled = loading;
 }
 
+/* ---------- Word-card explanation rendering ---------- */
+function renderExplainLoading() {
+  els.wcExplain.innerHTML =
+    '<div class="we-loading">Looking up<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>';
+}
+
+function renderExplain(data) {
+  // safe text insertion via textContent on dynamically-built nodes
+  els.wcExplain.innerHTML = '';
+  const make = (labelText, text) => {
+    const wrap = document.createElement('div');
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = labelText;
+    const t = document.createElement('span');
+    t.className = 'text';
+    t.textContent = text || '';
+    wrap.appendChild(label);
+    wrap.appendChild(t);
+    return wrap;
+  };
+  els.wcExplain.appendChild(Object.assign(make('Means', data.meaning), { className: 'word-meaning' }));
+  els.wcExplain.appendChild(Object.assign(make('Why',   data.hook),    { className: 'word-hook' }));
+  els.wcExplain.appendChild(Object.assign(make('Like',  data.example), { className: 'word-example' }));
+}
+
+function renderExplainRetry(word) {
+  els.wcExplain.innerHTML = '';
+  const retry = document.createElement('div');
+  retry.className = 'we-retry';
+  retry.textContent = 'Tap to retry';
+  retry.addEventListener('click', e => {
+    e.stopPropagation();
+    if (wordState.currentWord !== word) return;
+    loadAndShowExplain(word);
+  });
+  els.wcExplain.appendChild(retry);
+}
+
+/* Call GPT for the three-line explanation. Returns parsed JSON or throws. */
+async function fetchWordExplain(word, contextSentence) {
+  const systemPrompt =
+    'Explain an English word for a Chinese-speaking learner.\n' +
+    'Return STRICT JSON only, no markdown fences, no extra text:\n' +
+    '{\n' +
+    '  "meaning": "<10 words or fewer, simple English meaning>",\n' +
+    '  "hook": "<10-15 words: a vivid memory aid — etymology, word root, or visual metaphor>",\n' +
+    '  "example": "<15 words or fewer: a casual real-world example sentence using this word>"\n' +
+    '}\n' +
+    'Use simple words in the explanation — never use words harder than the target word itself. ' +
+    'Be vivid and concrete in the hook.';
+
+  const userMessage = `Word: ${word}\nIn sentence: ${contextSentence || ''}`;
+
+  const res = await fetch(ENDPOINTS.chat, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: MODELS.chat,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userMessage },
+      ],
+      temperature: 0.5,
+      max_tokens: 200,
+    }),
+  });
+  if (!res.ok) throw new Error(`Explain failed (${res.status})`);
+  const data = await res.json();
+  let text = data.choices?.[0]?.message?.content || '';
+  text = text.trim();
+  // strip ```json fences just in case
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  if (!text) throw new Error('Empty explain response');
+  const parsed = JSON.parse(text);
+  if (!parsed || typeof parsed !== 'object') throw new Error('Bad explain JSON');
+  return {
+    meaning: String(parsed.meaning || '').trim(),
+    hook:    String(parsed.hook    || '').trim(),
+    example: String(parsed.example || '').trim(),
+  };
+}
+
+/* Orchestrates the explain fetch + cache + render. Independent of TTS. */
+async function loadAndShowExplain(word) {
+  const key = word.toLowerCase();
+  const entry = wordState.cache.get(key);
+
+  // Cached? render immediately and skip the network call.
+  if (entry && entry.explain) {
+    if (wordState.currentWord === word) renderExplain(entry.explain);
+    return;
+  }
+
+  if (wordState.currentWord === word) renderExplainLoading();
+
+  try {
+    const explain = await fetchWordExplain(word, state.naturalSentence);
+    // word may have changed while we were waiting
+    if (wordState.currentWord !== word) return;
+    // attach to existing cache entry (which may or may not yet hold audio)
+    const existing = wordState.cache.get(key) || {};
+    existing.explain = explain;
+    wordState.cache.set(key, existing);
+    renderExplain(explain);
+  } catch (err) {
+    if (wordState.currentWord === word) {
+      renderExplainRetry(word);
+    }
+  }
+}
+
 async function loadAndPlayWord(word, autoplay) {
   const key = word.toLowerCase();
   let entry = wordState.cache.get(key);
 
-  if (!entry) {
+  if (!entry || !entry.url) {
     setWcPlayLoading(true);
     try {
       const blob = await ttsWordToBlob(word);
       // word may have changed while we were waiting
       if (wordState.currentWord !== word) return;
       const url = URL.createObjectURL(blob);
-      entry = { blob, url };
-      wordState.cache.set(key, entry);
+      // merge into existing entry — explain may have been written in parallel
+      const existing = wordState.cache.get(key) || {};
+      existing.blob = blob;
+      existing.url = url;
+      wordState.cache.set(key, existing);
+      entry = existing;
     } catch (err) {
       if (wordState.currentWord === word) {
         setWcPlayLoading(false);
@@ -1808,7 +1983,7 @@ function playCurrentWord() {
   if (!wordState.currentWord) return;
   const key = wordState.currentWord.toLowerCase();
   const entry = wordState.cache.get(key);
-  if (!entry) {
+  if (!entry || !entry.url) {
     // not loaded yet — load and play
     loadAndPlayWord(wordState.currentWord, true);
     return;
@@ -1832,7 +2007,9 @@ function handleWordClick(span) {
 
   wordState.currentWord = word;
   showWordCard(word);
+  // kick off audio + explanation in parallel — neither blocks the other
   loadAndPlayWord(word, true);
+  loadAndShowExplain(word);
 }
 
 /* =========================================================
