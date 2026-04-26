@@ -368,6 +368,100 @@
     to   { opacity: 1;   transform: translateY(-8px) scale(1.1); }
   }
 
+  /* clickable words inside the natural sentence */
+  .natural .word {
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+  }
+  .natural .word:hover {
+    border-bottom: 1px solid var(--amber);
+    border-bottom-color: rgba(232,160,74,0.4);
+  }
+
+  /* word card */
+  .word-card {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    margin: -20px auto 30px;
+    max-width: 320px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 22px 22px 20px;
+    position: relative;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.03),
+      0 12px 36px rgba(0,0,0,0.4);
+    text-align: center;
+  }
+  .word-card.visible {
+    display: block;
+    opacity: 1;
+  }
+  .word-card .wc-close {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    color: var(--ink-faint);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-family: inherit;
+    transition: color 0.2s;
+  }
+  .word-card .wc-close:hover { color: var(--ink-dim); }
+  .word-card .wc-word {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 32px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin-bottom: 16px;
+    line-height: 1.1;
+  }
+  .word-card .wc-play {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(232,160,74,0.12);
+    border: 1px solid rgba(232,160,74,0.4);
+    color: var(--amber);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    transition: background 0.2s, border-color 0.2s, transform 0.1s;
+  }
+  .word-card .wc-play:hover {
+    background: rgba(232,160,74,0.22);
+    border-color: var(--amber);
+  }
+  .word-card .wc-play:active { transform: scale(0.94); }
+  .word-card .wc-play:disabled { opacity: 0.5; cursor: wait; }
+  .word-card .wc-play svg {
+    width: 14px; height: 14px;
+    fill: currentColor;
+    margin-left: 2px;
+  }
+  .word-card .wc-play.loading svg { display: none; }
+  .word-card .wc-play.loading::after {
+    content: '';
+    width: 14px; height: 14px;
+    border: 1.5px solid rgba(232,160,74,0.3);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: wcSpin 0.7s linear infinite;
+  }
+  @keyframes wcSpin {
+    to { transform: rotate(360deg); }
+  }
+
   /* repeat zone */
   .repeat-zone {
     display: flex;
@@ -827,6 +921,14 @@
         </div>
       </div>
 
+      <div class="word-card" id="wordCard">
+        <button class="wc-close" id="wcClose" aria-label="Close">×</button>
+        <div class="wc-word" id="wcWord"></div>
+        <button class="wc-play" id="wcPlay" aria-label="Play word">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      </div>
+
       <div class="repeat-zone">
         <div class="stage-label"><span class="num">ii.</span> Repeat aloud</div>
         <div class="mic-wrap" id="repeatMicWrap">
@@ -894,6 +996,7 @@
 </div>
 <audio id="targetAudioEl" preload="auto" playsinline style="display:none"></audio>
 <audio id="userAudioEl" preload="auto" playsinline style="display:none"></audio>
+<audio id="wordAudioEl" preload="auto" playsinline style="display:none"></audio>
 <div class="toast" id="toast"></div>
 <div class="ctx-toast" id="ctxToast">Context cleared</div>
 
@@ -992,6 +1095,13 @@ const state = {
   currentlyPlaying: null,  // 'target' | 'you' | null
 };
 
+/* Word-card state — kept separate so it never touches the main loop. */
+const wordState = {
+  cache: new Map(),        // word(lowercased) -> { url, blob }
+  currentWord: null,       // the word currently displayed in the card
+  fadeTimer: null,
+};
+
 /* =========================================================
    ELEMENTS
    ========================================================= */
@@ -1025,7 +1135,13 @@ const els = {
   resetCtxBtn:   $('resetCtxBtn'),
   targetAudioEl: $('targetAudioEl'),
   userAudioEl:   $('userAudioEl'),
+  wordAudioEl:   $('wordAudioEl'),
   ctxToast:      $('ctxToast'),
+
+  wordCard:      $('wordCard'),
+  wcWord:        $('wcWord'),
+  wcPlay:        $('wcPlay'),
+  wcClose:       $('wcClose'),
 };
 
 /* =========================================================
@@ -1070,6 +1186,16 @@ function resetAll() {
   els.youBtn.disabled = true;
   els.targetBtn.disabled = true;
   els.naturalText.classList.remove('speaking');
+
+  // word-card cleanup
+  hideWordCard(true);
+  for (const [, entry] of wordState.cache) {
+    if (entry.url) URL.revokeObjectURL(entry.url);
+  }
+  wordState.cache.clear();
+  wordState.currentWord = null;
+  els.wordAudioEl.removeAttribute('src');
+  els.wordAudioEl.load();
 
   els.processingMsg.innerHTML = '';
   setMicState('speak', 'idle');
@@ -1228,7 +1354,7 @@ async function handleSpeakDone(blob, ext) {
     const taggedSentence = await getNaturalSentence(userText, conversationHistory);
     const displaySentence = stripAudioTags(taggedSentence);
     state.naturalSentence = displaySentence;
-    els.naturalSentence.textContent = displaySentence;
+    renderNaturalSentence(displaySentence);
 
     // Record this turn for future tone detection. We store the CLEAN nativeSaid
     // (no tags), because tags are TTS-only and would pollute future prompts.
@@ -1468,6 +1594,38 @@ function stripAudioTags(tagged) {
   return s;
 }
 
+/* Render the natural sentence with each word wrapped in <span class="word">.
+   Splits on whitespace, then peels off leading/trailing punctuation so it
+   stays outside the span. Apostrophes inside words ("I'm", "don't") stay
+   inside. Result: "I'm wiped out today." → spans for I'm / wiped / out /
+   today, with the trailing "." rendered as a plain text node. */
+function renderNaturalSentence(sentence) {
+  els.naturalSentence.innerHTML = '';
+  const tokens = sentence.split(/(\s+)/); // keep whitespace as separators
+
+  for (const tok of tokens) {
+    if (tok === '') continue;
+    if (/^\s+$/.test(tok)) {
+      els.naturalSentence.appendChild(document.createTextNode(tok));
+      continue;
+    }
+    // peel off leading/trailing punctuation; keep apostrophes inside words
+    const m = tok.match(/^([^A-Za-z0-9'’]*)([A-Za-z0-9][A-Za-z0-9'’\-]*)?([^A-Za-z0-9'’]*)$/);
+    if (!m || !m[2]) {
+      // pure punctuation or no letters — render as plain text
+      els.naturalSentence.appendChild(document.createTextNode(tok));
+      continue;
+    }
+    const [, lead, word, trail] = m;
+    if (lead) els.naturalSentence.appendChild(document.createTextNode(lead));
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.textContent = word;
+    els.naturalSentence.appendChild(span);
+    if (trail) els.naturalSentence.appendChild(document.createTextNode(trail));
+  }
+}
+
 async function getNaturalSentence(userText, history = []) {
   // Expand history into alternating user/assistant turns.
   // The model sees: prior user transcripts + prior native sentences + current user input.
@@ -1550,6 +1708,133 @@ async function ttsToBlob(text) {
   return await res.blob();
 }
 
+/* Word-level TTS — same call as ttsToBlob but no audio tags, just the
+   bare word. Kept separate so the main TTS path stays untouched. */
+async function ttsWordToBlob(word) {
+  if (!ELEVENLABS_API_KEY || !ELEVENLABS_VOICE_ID) {
+    throw new Error('ElevenLabs API key or voice ID not set');
+  }
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'xi-api-key': ELEVENLABS_API_KEY,
+      'Content-Type': 'application/json',
+      'Accept': 'audio/mpeg',
+    },
+    body: JSON.stringify({
+      text: word,
+      model_id: 'eleven_v3',
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+        style: 0.55,
+        use_speaker_boost: true,
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(`Word TTS failed (${res.status})`);
+  return await res.blob();
+}
+
+/* =========================================================
+   WORD CARD
+   ========================================================= */
+function showWordCard(word) {
+  clearTimeout(wordState.fadeTimer);
+  els.wcWord.textContent = word;
+  els.wordCard.style.display = 'block';
+  // force reflow then add visible class so the opacity transition runs
+  void els.wordCard.offsetWidth;
+  els.wordCard.classList.add('visible');
+}
+
+function hideWordCard(immediate = false) {
+  clearTimeout(wordState.fadeTimer);
+  els.wordCard.classList.remove('visible');
+  wordState.currentWord = null;
+  // pause any in-flight word audio
+  try { els.wordAudioEl.pause(); els.wordAudioEl.currentTime = 0; } catch (e) {}
+  if (immediate) {
+    els.wordCard.style.display = 'none';
+  } else {
+    wordState.fadeTimer = setTimeout(() => {
+      els.wordCard.style.display = 'none';
+    }, 260);
+  }
+}
+
+function setWcPlayLoading(loading) {
+  els.wcPlay.classList.toggle('loading', loading);
+  els.wcPlay.disabled = loading;
+}
+
+async function loadAndPlayWord(word, autoplay) {
+  const key = word.toLowerCase();
+  let entry = wordState.cache.get(key);
+
+  if (!entry) {
+    setWcPlayLoading(true);
+    try {
+      const blob = await ttsWordToBlob(word);
+      // word may have changed while we were waiting
+      if (wordState.currentWord !== word) return;
+      const url = URL.createObjectURL(blob);
+      entry = { blob, url };
+      wordState.cache.set(key, entry);
+    } catch (err) {
+      if (wordState.currentWord === word) {
+        setWcPlayLoading(false);
+        showToast(err.message || 'Word audio failed');
+      }
+      return;
+    }
+    setWcPlayLoading(false);
+  }
+
+  if (wordState.currentWord !== word) return;
+
+  els.wordAudioEl.src = entry.url;
+  els.wordAudioEl.load();
+  if (autoplay) {
+    try {
+      const p = els.wordAudioEl.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) {}
+  }
+}
+
+function playCurrentWord() {
+  if (!wordState.currentWord) return;
+  const key = wordState.currentWord.toLowerCase();
+  const entry = wordState.cache.get(key);
+  if (!entry) {
+    // not loaded yet — load and play
+    loadAndPlayWord(wordState.currentWord, true);
+    return;
+  }
+  try {
+    els.wordAudioEl.currentTime = 0;
+    const p = els.wordAudioEl.play();
+    if (p && p.catch) p.catch(() => {});
+  } catch (e) {}
+}
+
+function handleWordClick(span) {
+  const word = span.textContent;
+  if (!word) return;
+
+  // clicking the same word again → close the card
+  if (wordState.currentWord === word && els.wordCard.classList.contains('visible')) {
+    hideWordCard();
+    return;
+  }
+
+  wordState.currentWord = word;
+  showWordCard(word);
+  loadAndPlayWord(word, true);
+}
+
 /* =========================================================
    iOS AUDIO UNLOCK HELPER — must be called SYNCHRONOUSLY
    from inside a user gesture (mousedown / touchstart). Plays
@@ -1566,10 +1851,13 @@ function unlockAudioOnce() {
   try {
     els.targetAudioEl.load();
     els.userAudioEl.load();
+    els.wordAudioEl.load();
     const p1 = els.targetAudioEl.play();
     const p2 = els.userAudioEl.play();
+    const p3 = els.wordAudioEl.play();
     if (p1 && p1.then) p1.then(() => els.targetAudioEl.pause()).catch(() => {});
     if (p2 && p2.then) p2.then(() => els.userAudioEl.pause()).catch(() => {});
+    if (p3 && p3.then) p3.then(() => els.wordAudioEl.pause()).catch(() => {});
     audioUnlocked = true;
   } catch (e) {}
 }
@@ -1618,6 +1906,36 @@ function flashContextCleared() {
   flashContextCleared._t = setTimeout(() => els.ctxToast.classList.remove('show'), 1600);
 }
 els.resetCtxBtn.addEventListener('click', flashContextCleared);
+
+// Word card events
+// Use mousedown delegation so we also catch clicks before they bubble to body.
+els.naturalSentence.addEventListener('mousedown', e => {
+  const span = e.target.closest('.word');
+  if (!span) return;
+  unlockAudioOnce();
+  e.stopPropagation();
+});
+els.naturalSentence.addEventListener('click', e => {
+  const span = e.target.closest('.word');
+  if (!span) return;
+  e.stopPropagation();
+  handleWordClick(span);
+});
+els.wcPlay.addEventListener('click', e => {
+  e.stopPropagation();
+  unlockAudioOnce();
+  playCurrentWord();
+});
+els.wcClose.addEventListener('click', e => {
+  e.stopPropagation();
+  hideWordCard();
+});
+// Stop card-internal clicks from bubbling up and closing the card itself
+els.wordCard.addEventListener('mousedown', e => { e.stopPropagation(); });
+// Click anywhere else on the page → close the card
+document.addEventListener('mousedown', () => {
+  if (els.wordCard.classList.contains('visible')) hideWordCard();
+});
 
 // Keyboard
 const isTyping = () => {
