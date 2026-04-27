@@ -905,6 +905,239 @@
   footer .status-dot.busy { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
   footer .status-dot.error { background: var(--crimson); box-shadow: 0 0 8px var(--crimson); }
 
+  /* ---------- FIND-A-WORD MODE ---------- */
+  /* entry button under the speak mic */
+  .find-word-entry {
+    margin-top: 14px;
+    padding: 14px 18px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--ink-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1;
+    transition: color 0.25s ease;
+  }
+  .find-word-entry:hover { color: var(--amber); }
+  .find-word-entry .find-icon {
+    font-size: 13px;
+    opacity: 0.8;
+    line-height: 1;
+  }
+  .find-word-entry .find-text em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-size: 13px;
+    margin-left: 4px;
+    color: inherit;
+  }
+  /* "back to speaking" variant — keep the same footprint, just different content */
+  .find-word-entry.back-mode { color: var(--ink-dim); }
+  .find-word-entry.back-mode:hover { color: var(--crimson); }
+
+  /* phaseSpeak when in find-mode: dim headline + subhead */
+  #phaseSpeak.find-mode-active .headline,
+  #phaseSpeak.find-mode-active .subhead {
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+  }
+  #phaseSpeak .headline,
+  #phaseSpeak .subhead {
+    transition: opacity 0.3s ease;
+  }
+
+  /* azure mic variant — used while user is recording their description */
+  .mic.find-mode {
+    background: radial-gradient(circle at 30% 30%, #2a221a, #14100c);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      inset 0 -10px 30px rgba(0,0,0,0.5),
+      0 20px 60px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(90,141,184,0.5);
+  }
+  .mic.find-mode.recording {
+    background: radial-gradient(circle at 30% 30%, #5a8db8, #2d4d6a);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.15),
+      inset 0 -10px 30px rgba(0,0,0,0.4),
+      0 20px 60px rgba(90,141,184,0.4),
+      0 0 0 1px var(--azure-deep);
+  }
+  /* azure pulse rings while recording in find-mode */
+  .mic-wrap.find-mode-rings.recording .mic-rings::before {
+    border-color: var(--azure);
+  }
+  .mic-wrap.find-mode-rings.recording .mic-rings::after {
+    border-color: var(--azure-deep);
+  }
+
+  /* ----- find result panel ----- */
+  #findResult {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    animation: fadeUp 0.5s ease;
+  }
+  #findResult.visible { display: flex; }
+
+  .find-result-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    color: var(--azure);
+    text-transform: uppercase;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .find-result-label::before,
+  .find-result-label::after {
+    content: '';
+    width: 24px; height: 1px;
+    background: var(--azure);
+    opacity: 0.4;
+  }
+
+  .find-word-display {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: clamp(44px, 7vw, 60px);
+    letter-spacing: -0.02em;
+    color: var(--amber);
+    line-height: 1.05;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .find-word-display.notfound {
+    font-style: italic;
+    font-size: clamp(22px, 3vw, 28px);
+    color: var(--ink-dim);
+    font-weight: 300;
+  }
+
+  .find-word-play {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(232,160,74,0.12);
+    border: 1px solid rgba(232,160,74,0.4);
+    color: var(--amber);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    margin-bottom: 22px;
+    transition: background 0.2s, border-color 0.2s, transform 0.1s;
+  }
+  .find-word-play:hover {
+    background: rgba(232,160,74,0.22);
+    border-color: var(--amber);
+  }
+  .find-word-play:active { transform: scale(0.94); }
+  .find-word-play:disabled { opacity: 0.5; cursor: wait; }
+  .find-word-play svg {
+    width: 14px; height: 14px;
+    fill: currentColor;
+    margin-left: 2px;
+  }
+  .find-word-play.loading svg { display: none; }
+  .find-word-play.loading::after {
+    content: '';
+    width: 14px; height: 14px;
+    border: 1.5px solid rgba(232,160,74,0.3);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: wcSpin 0.7s linear infinite;
+  }
+
+  /* embedded word-card style block inside findResult — reuse .word-card class */
+  #findResult .word-card {
+    margin: 0 auto 30px;
+  }
+
+  /* repeat zone inside findResult */
+  .find-repeat-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  /* compact compare row inside findResult — reuses .compare/.compare-btn */
+  #findResult .compare {
+    margin-bottom: 28px;
+  }
+
+  /* "back to speaking" footer button at bottom of findResult */
+  .find-back-btn {
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 11px 16px;
+    cursor: pointer;
+    color: var(--ink-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    line-height: 1;
+    margin-top: 8px;
+    transition: color 0.25s, border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .find-back-btn:hover {
+    color: var(--ink-dim);
+    border-color: var(--ink-faint);
+    background: rgba(255,255,255,0.02);
+  }
+  .find-back-btn:active { transform: scale(0.97); }
+
+  /* "try again" inline button when GPT returned ??? */
+  .find-try-again {
+    background: transparent;
+    border: 1px solid var(--azure-deep);
+    border-radius: 3px;
+    padding: 11px 18px;
+    cursor: pointer;
+    color: var(--azure);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    line-height: 1;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    transition: color 0.25s, border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .find-try-again:hover {
+    color: var(--ink);
+    border-color: var(--azure);
+    background: rgba(90,141,184,0.08);
+  }
+  .find-try-again:active { transform: scale(0.97); }
+
+  /* hide elements while in find-mode */
+  #phaseSpeak.find-mode-active.find-result-shown #speakMicWrap,
+  #phaseSpeak.find-mode-active.find-result-shown #speakLabel {
+    display: none;
+  }
+  #phaseSpeak.find-mode-active.find-result-shown #findWordBtn {
+    display: none;
+  }
+
   @media (max-width: 720px) {
     .app { padding: 20px 22px 0; }
     main { padding: 30px 0 30px; }
@@ -916,6 +1149,7 @@
     .mic.large { width: 130px; height: 130px; }
     .mic.large svg { width: 42px; height: 42px; }
     .mic.medium { width: 80px; height: 80px; }
+    .find-word-display { font-size: clamp(40px, 9vw, 52px); }
   }
 </style>
 </head>
@@ -955,7 +1189,69 @@
         Hold to speak <span class="key">— or hold SPACE</span>
       </div>
 
+      <button id="findWordBtn" class="find-word-entry" type="button">
+        <span class="find-icon">🔍</span>
+        <span class="find-text">Don't know the word? <em>Find it</em></span>
+      </button>
+
       <div class="processing-msg" id="processingMsg"></div>
+
+      <!-- ===== FIND-A-WORD RESULT PANEL ===== -->
+      <div id="findResult">
+        <div class="find-result-label" id="findResultLabel">The word</div>
+        <div class="find-word-display" id="findWordDisplay"></div>
+        <button class="find-word-play" id="findWordPlay" aria-label="Play word" type="button">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+
+        <div class="word-card" id="findWordCard">
+          <div class="wc-word" id="findWcWord" style="display:none"></div>
+          <div class="word-explain" id="findWcExplain"></div>
+        </div>
+
+        <button class="find-try-again" id="findTryAgain" type="button" style="display:none">↻ Try Again</button>
+
+        <div class="find-repeat-zone" id="findRepeatZone">
+          <div class="mic-wrap" id="findRepeatMicWrap">
+            <div class="mic-rings"></div>
+            <button class="mic medium" id="findRepeatMic" aria-label="Hold to repeat" type="button">
+              <svg viewBox="0 0 24 24">
+                <rect x="9" y="3" width="6" height="12" rx="3"/>
+                <path d="M5 11a7 7 0 0 0 14 0"/>
+                <line x1="12" y1="18" x2="12" y2="22"/>
+              </svg>
+            </button>
+          </div>
+          <div class="mic-label" id="findRepeatLabel">
+            Hold to repeat <span class="key">— or hold SPACE</span>
+          </div>
+        </div>
+
+        <div class="compare" id="findCompareBox">
+          <button class="compare-btn target" id="findTargetBtn" type="button">
+            <div class="play-icon">
+              <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+            <div class="play-text">
+              <span class="name">Target</span>
+              <span class="key">Tap</span>
+            </div>
+            <div class="sweep"></div>
+          </button>
+          <button class="compare-btn you" id="findYouBtn" type="button">
+            <div class="play-icon">
+              <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+            <div class="play-text">
+              <span class="name">You</span>
+              <span class="key">Tap</span>
+            </div>
+            <div class="sweep"></div>
+          </button>
+        </div>
+
+        <button class="find-back-btn" id="findBackBtn" type="button">✕ Back to speaking</button>
+      </div>
     </section>
 
     <!-- ===== PHASE 2: MIRROR ===== -->
@@ -1135,6 +1431,7 @@ let audioUnlocked = false;
    ========================================================= */
 const state = {
   phase: 'speak',          // 'speak' | 'mirror'
+  mode: 'speak',           // 'speak' | 'find' — find-mode is a sub-state inside phaseSpeak
   recording: null,         // 'speak' | 'repeat' | null
   busy: false,
   mediaRecorder: null,
@@ -1153,6 +1450,19 @@ const wordState = {
   cache: new Map(),        // word(lowercased) -> { url, blob }
   currentWord: null,       // the word currently displayed in the card
   fadeTimer: null,
+};
+
+/* Find-a-Word state — fully isolated from main loop's wordState and conversationHistory.
+   - currentWord: the word GPT returned for the current find session
+   - cache: per-find-session word cache for audio + explain (cleared on exit)
+   - userRepeatUrl: URL for the user's repeat of the found word
+   - subPhase: 'describe' (recording description) | 'repeat' (recording repeat) | null */
+const findState = {
+  currentWord: null,
+  cache: new Map(),        // word(lowercased) -> { url, blob, explain }
+  userRepeatUrl: null,
+  subPhase: null,
+  currentlyPlaying: null,  // 'target' | 'you' | null  (find-result A/B compare state)
 };
 
 /* =========================================================
@@ -1196,6 +1506,24 @@ const els = {
   wcPlay:        $('wcPlay'),
   wcClose:       $('wcClose'),
   wcExplain:     $('wcExplain'),
+
+  // Find-a-Word elements
+  findWordBtn:        $('findWordBtn'),
+  findResult:         $('findResult'),
+  findResultLabel:    $('findResultLabel'),
+  findWordDisplay:    $('findWordDisplay'),
+  findWordPlay:       $('findWordPlay'),
+  findWordCard:       $('findWordCard'),
+  findWcExplain:      $('findWcExplain'),
+  findTryAgain:       $('findTryAgain'),
+  findRepeatZone:     $('findRepeatZone'),
+  findRepeatMic:      $('findRepeatMic'),
+  findRepeatMicWrap:  $('findRepeatMicWrap'),
+  findRepeatLabel:    $('findRepeatLabel'),
+  findCompareBox:     $('findCompareBox'),
+  findTargetBtn:      $('findTargetBtn'),
+  findYouBtn:         $('findYouBtn'),
+  findBackBtn:        $('findBackBtn'),
 };
 
 /* =========================================================
@@ -1262,6 +1590,42 @@ function resetAll() {
    MIC UI
    ========================================================= */
 function setMicState(which, mode) {
+  // In find-mode, the active mics are different elements (azure-styled).
+  // Route to those instead of the main-loop mics.
+  if (state.mode === 'find') {
+    let btn, wrap, lbl;
+    if (which === 'speak') {
+      // The user is recording their description on the main speak mic,
+      // but visually it should look azure (find-mode color).
+      btn = els.speakMic; wrap = els.speakMicWrap; lbl = els.speakLabel;
+      btn.classList.add('find-mode');
+      wrap.classList.add('find-mode-rings');
+    } else {
+      // 'repeat' in find-mode: use the medium mic inside #findResult
+      btn = els.findRepeatMic; wrap = els.findRepeatMicWrap; lbl = els.findRepeatLabel;
+    }
+
+    btn.classList.remove('recording', 'processing');
+    wrap.classList.remove('recording');
+
+    if (mode === 'recording') {
+      btn.classList.add('recording');
+      wrap.classList.add('recording');
+      lbl.innerHTML = which === 'speak'
+        ? 'Listening… <span class="key">release to find</span>'
+        : 'Listening… <span class="key">release to compare</span>';
+    } else if (mode === 'processing') {
+      btn.classList.add('processing');
+      lbl.innerHTML = 'Working…';
+    } else {
+      lbl.innerHTML = which === 'speak'
+        ? 'Describe the word in English <span class="key">— release to find</span>'
+        : 'Hold to repeat <span class="key">— or hold SPACE</span>';
+    }
+    return;
+  }
+
+  // ---- main-loop path (unchanged) ----
   const btn  = which === 'speak' ? els.speakMic : els.repeatMic;
   const wrap = which === 'speak' ? els.speakMicWrap : els.repeatMicWrap;
   const lbl  = which === 'speak' ? els.speakLabel : els.repeatLabel;
@@ -1373,8 +1737,13 @@ async function startRecording(which) {
       else if (actualType.includes('webm')) ext = 'webm';
     }
 
-    if (phase === 'speak')  handleSpeakDone(uploadBlob, ext);
-    else if (phase === 'repeat') handleRepeatDone(uploadBlob);
+    if (phase === 'speak') {
+      if (state.mode === 'find') handleFindDescribeDone(uploadBlob, ext);
+      else                       handleSpeakDone(uploadBlob, ext);
+    } else if (phase === 'repeat') {
+      if (state.mode === 'find') handleFindRepeatDone(uploadBlob);
+      else                       handleRepeatDone(uploadBlob);
+    }
   };
 
   state.mediaRecorder.start();
@@ -2013,6 +2382,451 @@ function handleWordClick(span) {
 }
 
 /* =========================================================
+   FIND-A-WORD MODE
+   ---------------------------------------------------------
+   A side-channel inside phaseSpeak. The user describes a word
+   they don't know in English (or with Chinese mixed in). GPT
+   returns the single best-fit word. The user then hears it,
+   sees its meaning/hook/example, and practices repeating it.
+
+   This flow does NOT touch:
+   - SYSTEM_PROMPT or conversationHistory (no emotional pollution)
+   - The main loop's targetUrl/userRepeatUrl/state.naturalSentence
+   - wordState (the main loop's word card)
+
+   It DOES reuse:
+   - transcribe(), unlockAudioOnce(), fetchWordExplain(),
+     ttsWordToBlob(), wordAudioEl (for word playback),
+     userAudioEl (for user repeat), .word-card / .compare-btn
+     CSS, playAudioOn-style A/B logic.
+   ========================================================= */
+
+const FIND_WORD_PROMPT =
+`The user is describing an English word they don't know. Read their description and return ONLY the single English word they're looking for. No sentence. No explanation. No quotes. Just one word.
+
+If multiple words could fit, pick the most common everyday one.
+If you genuinely cannot guess, return: ???
+
+Examples:
+User: 'the white thing for clean teeth'
+You: toothpaste
+
+User: 'the small flat machine I use to talk to people'
+You: phone
+
+User: 'the feeling when you very tired but cannot sleep'
+You: insomnia`;
+
+async function findWordFromDescription(description) {
+  const res = await fetch(ENDPOINTS.chat, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: MODELS.chat,
+      messages: [
+        { role: 'system', content: FIND_WORD_PROMPT },
+        { role: 'user',   content: description },
+      ],
+      temperature: 0.3,
+      max_tokens: 20,
+    }),
+  });
+  if (!res.ok) throw new Error(`Find-word failed (${res.status})`);
+  const data = await res.json();
+  let text = data.choices?.[0]?.message?.content || '';
+  text = text.trim().replace(/^["'“”]+|["'“”]+$/g, '').trim();
+  // Pull out the first word-like token in case the model returned more
+  // than one word despite instructions.
+  const m = text.match(/[A-Za-z][A-Za-z'\-]*/);
+  if (text === '???' || /^\?+$/.test(text)) return '???';
+  return m ? m[0] : '???';
+}
+
+function enterFindMode() {
+  // visual: dim headline+subhead, swap entry button to "Back" mode
+  state.mode = 'find';
+  els.phaseSpeak.classList.add('find-mode-active');
+  els.speakMic.classList.add('find-mode');
+  els.speakMicWrap.classList.add('find-mode-rings');
+  els.speakLabel.innerHTML = 'Describe the word in English <span class="key">— release to find</span>';
+
+  const fb = els.findWordBtn;
+  fb.classList.add('back-mode');
+  fb.querySelector('.find-icon').textContent = '✕';
+  fb.querySelector('.find-text').innerHTML = 'Back to speaking';
+
+  // hide processing-msg leftovers
+  els.processingMsg.innerHTML = '';
+  setStatus('Describe the word');
+}
+
+function exitFindMode() {
+  // stop any find-mode playback / recording cleanly
+  stopFindPlayback();
+  if (state.recording) {
+    try { state.mediaRecorder && state.mediaRecorder.stop(); } catch (e) {}
+  }
+
+  // release all find-mode audio URLs
+  if (findState.userRepeatUrl) {
+    URL.revokeObjectURL(findState.userRepeatUrl);
+    findState.userRepeatUrl = null;
+  }
+  for (const [, entry] of findState.cache) {
+    if (entry && entry.url) URL.revokeObjectURL(entry.url);
+  }
+  findState.cache.clear();
+  findState.currentWord = null;
+  findState.subPhase = null;
+  findState.currentlyPlaying = null;
+
+  // tear down any find-result UI
+  els.findResult.classList.remove('visible');
+  els.phaseSpeak.classList.remove('find-result-shown');
+  els.findWordDisplay.textContent = '';
+  els.findWordDisplay.classList.remove('notfound');
+  els.findWordPlay.style.display = '';
+  els.findWordPlay.classList.remove('loading');
+  els.findWordPlay.disabled = false;
+  els.findWordCard.classList.remove('visible');
+  els.findWordCard.style.display = '';
+  els.findWcExplain.innerHTML = '';
+  els.findRepeatZone.style.display = '';
+  els.findCompareBox.classList.remove('visible');
+  els.findTryAgain.style.display = 'none';
+  els.findTargetBtn.classList.remove('playing');
+  els.findYouBtn.classList.remove('playing');
+  els.findYouBtn.disabled = true;
+  els.findTargetBtn.disabled = true;
+
+  // restore main speak mic visuals
+  els.speakMic.classList.remove('find-mode', 'recording', 'processing');
+  els.speakMicWrap.classList.remove('find-mode-rings', 'recording');
+  els.phaseSpeak.classList.remove('find-mode-active');
+  els.speakLabel.innerHTML = 'Hold to speak <span class="key">— or hold SPACE</span>';
+
+  // restore entry button
+  const fb = els.findWordBtn;
+  fb.classList.remove('back-mode');
+  fb.querySelector('.find-icon').textContent = '🔍';
+  fb.querySelector('.find-text').innerHTML = 'Don\'t know the word? <em>Find it</em>';
+
+  // restore mode last
+  state.mode = 'speak';
+  setStatus('Ready');
+}
+
+/* "Try Again" — clear current find result but stay in find-mode */
+function findResetForRetry() {
+  stopFindPlayback();
+  if (findState.userRepeatUrl) {
+    URL.revokeObjectURL(findState.userRepeatUrl);
+    findState.userRepeatUrl = null;
+  }
+  for (const [, entry] of findState.cache) {
+    if (entry && entry.url) URL.revokeObjectURL(entry.url);
+  }
+  findState.cache.clear();
+  findState.currentWord = null;
+  findState.subPhase = null;
+  findState.currentlyPlaying = null;
+
+  els.findResult.classList.remove('visible');
+  els.phaseSpeak.classList.remove('find-result-shown');
+  els.findWordDisplay.textContent = '';
+  els.findWordDisplay.classList.remove('notfound');
+  els.findWordPlay.style.display = '';
+  els.findWordPlay.classList.remove('loading');
+  els.findWordPlay.disabled = false;
+  els.findWordCard.classList.remove('visible');
+  els.findWordCard.style.display = '';
+  els.findWcExplain.innerHTML = '';
+  els.findRepeatZone.style.display = '';
+  els.findCompareBox.classList.remove('visible');
+  els.findTryAgain.style.display = 'none';
+  els.findTargetBtn.classList.remove('playing');
+  els.findYouBtn.classList.remove('playing');
+  els.findYouBtn.disabled = true;
+  els.findTargetBtn.disabled = true;
+
+  // re-show the speak mic for another description attempt
+  els.speakLabel.innerHTML = 'Describe the word in English <span class="key">— release to find</span>';
+  setStatus('Describe the word');
+}
+
+async function handleFindDescribeDone(blob, ext) {
+  state.busy = true;
+  setMicState('speak', 'processing');
+  els.processingMsg.innerHTML = 'Transcribing<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+  setStatus('Transcribing', 'busy');
+
+  try {
+    const userText = await transcribe(blob, ext);
+    if (state.mode !== 'find') return;
+    if (!userText.trim()) throw new Error('Could not hear you. Try again.');
+
+    els.processingMsg.innerHTML = 'Finding the word<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+    setStatus('Thinking', 'busy');
+
+    const word = await findWordFromDescription(userText);
+    els.processingMsg.innerHTML = '';
+
+    // user may have exited find-mode while we were waiting
+    if (state.mode !== 'find') return;
+
+    showFindResult(word, userText);
+  } catch (err) {
+    console.error(err);
+    showToast(err.message || 'Something went wrong');
+    setStatus('Error', 'error');
+    els.processingMsg.innerHTML = '';
+    setMicState('speak', 'idle');
+    setTimeout(() => setStatus('Ready'), 2200);
+  } finally {
+    state.busy = false;
+    if (state.mode === 'find' && !findState.currentWord) {
+      // failed before result shown — keep mic active for another attempt
+      setMicState('speak', 'idle');
+    }
+  }
+}
+
+function showFindResult(word, originalDescription) {
+  // hide the description mic area
+  els.phaseSpeak.classList.add('find-result-shown');
+  els.findResult.classList.add('visible');
+
+  if (word === '???') {
+    findState.currentWord = null;
+    els.findResultLabel.textContent = 'Hmm';
+    els.findWordDisplay.classList.add('notfound');
+    els.findWordDisplay.textContent = 'Can you describe it differently?';
+    els.findWordPlay.style.display = 'none';
+    els.findWordCard.classList.remove('visible');
+    els.findWordCard.style.display = 'none';
+    els.findRepeatZone.style.display = 'none';
+    els.findCompareBox.classList.remove('visible');
+    els.findTryAgain.style.display = 'inline-block';
+    setStatus('Try again');
+    return;
+  }
+
+  findState.currentWord = word;
+  els.findResultLabel.textContent = 'The word';
+  els.findWordDisplay.classList.remove('notfound');
+  els.findWordDisplay.textContent = word;
+  els.findWordPlay.style.display = '';
+  els.findWordPlay.classList.remove('loading');
+  els.findWordPlay.disabled = false;
+  els.findTryAgain.style.display = 'none';
+  els.findRepeatZone.style.display = '';
+
+  // word card with explain
+  els.findWordCard.style.display = 'block';
+  void els.findWordCard.offsetWidth;
+  els.findWordCard.classList.add('visible');
+  els.findWcExplain.innerHTML = '';
+
+  // kick off audio + explain in parallel
+  loadAndPlayFindWord(word, true);
+  loadAndShowFindExplain(word);
+
+  setStatus('Listen and repeat');
+}
+
+async function loadAndPlayFindWord(word, autoplay) {
+  const key = word.toLowerCase();
+  let entry = findState.cache.get(key);
+
+  if (!entry || !entry.url) {
+    els.findWordPlay.classList.add('loading');
+    els.findWordPlay.disabled = true;
+    try {
+      const blob = await ttsWordToBlob(word);
+      if (findState.currentWord !== word) return;
+      const url = URL.createObjectURL(blob);
+      const existing = findState.cache.get(key) || {};
+      existing.blob = blob;
+      existing.url = url;
+      findState.cache.set(key, existing);
+      entry = existing;
+    } catch (err) {
+      if (findState.currentWord === word) {
+        els.findWordPlay.classList.remove('loading');
+        els.findWordPlay.disabled = false;
+        showToast(err.message || 'Word audio failed');
+      }
+      return;
+    }
+    els.findWordPlay.classList.remove('loading');
+    els.findWordPlay.disabled = false;
+  }
+
+  if (findState.currentWord !== word) return;
+
+  els.wordAudioEl.src = entry.url;
+  els.wordAudioEl.load();
+  if (autoplay) {
+    try {
+      const p = els.wordAudioEl.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) {}
+  }
+}
+
+function playCurrentFindWord() {
+  if (!findState.currentWord) return;
+  const key = findState.currentWord.toLowerCase();
+  const entry = findState.cache.get(key);
+  if (!entry || !entry.url) {
+    loadAndPlayFindWord(findState.currentWord, true);
+    return;
+  }
+  // route through compare-button path so visuals update consistently
+  playFindAudioOn('target');
+}
+
+async function loadAndShowFindExplain(word) {
+  const key = word.toLowerCase();
+  const entry = findState.cache.get(key);
+
+  if (entry && entry.explain) {
+    if (findState.currentWord === word) renderFindExplain(entry.explain);
+    return;
+  }
+
+  if (findState.currentWord === word) {
+    els.findWcExplain.innerHTML =
+      '<div class="we-loading">Looking up<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>';
+  }
+
+  try {
+    // pass the word as its own context — no main-loop sentence to leak in
+    const explain = await fetchWordExplain(word, '');
+    if (findState.currentWord !== word) return;
+    const existing = findState.cache.get(key) || {};
+    existing.explain = explain;
+    findState.cache.set(key, existing);
+    renderFindExplain(explain);
+  } catch (err) {
+    if (findState.currentWord === word) {
+      els.findWcExplain.innerHTML = '';
+      const retry = document.createElement('div');
+      retry.className = 'we-retry';
+      retry.textContent = 'Tap to retry';
+      retry.addEventListener('click', e => {
+        e.stopPropagation();
+        if (findState.currentWord !== word) return;
+        loadAndShowFindExplain(word);
+      });
+      els.findWcExplain.appendChild(retry);
+    }
+  }
+}
+
+function renderFindExplain(data) {
+  els.findWcExplain.innerHTML = '';
+  const make = (labelText, text) => {
+    const wrap = document.createElement('div');
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = labelText;
+    const t = document.createElement('span');
+    t.className = 'text';
+    t.textContent = text || '';
+    wrap.appendChild(label);
+    wrap.appendChild(t);
+    return wrap;
+  };
+  els.findWcExplain.appendChild(make('Means', data.meaning));
+  els.findWcExplain.appendChild(make('Why',   data.hook));
+  els.findWcExplain.appendChild(make('Like',  data.example));
+}
+
+async function handleFindRepeatDone(blob) {
+  if (findState.userRepeatUrl) URL.revokeObjectURL(findState.userRepeatUrl);
+  findState.userRepeatUrl = URL.createObjectURL(blob);
+  els.userAudioEl.src = findState.userRepeatUrl;
+  els.userAudioEl.load();
+
+  setMicState('repeat', 'idle');
+  els.findCompareBox.classList.add('visible');
+  els.findTargetBtn.disabled = false;
+  els.findYouBtn.disabled = false;
+
+  setStatus('Compare freely');
+
+  // auto-play the user's repeat once
+  await playFindAudioOn('you');
+}
+
+/* A/B compare playback for find-mode — mirrors playAudioOn but uses
+   findState + the find-mode compare buttons. Target plays the word
+   audio (wordAudioEl); You plays the user's repeat (userAudioEl). */
+function stopFindPlayback() {
+  try { els.wordAudioEl.pause(); els.wordAudioEl.currentTime = 0; } catch(e){}
+  try { els.userAudioEl.pause(); els.userAudioEl.currentTime = 0; } catch(e){}
+  els.findTargetBtn.classList.remove('playing');
+  els.findYouBtn.classList.remove('playing');
+
+  const tSweep = els.findTargetBtn.querySelector('.sweep');
+  const ySweep = els.findYouBtn.querySelector('.sweep');
+  if (tSweep) { tSweep.style.transition = 'none'; tSweep.style.width = '0%'; tSweep.style.opacity = ''; }
+  if (ySweep) { ySweep.style.transition = 'none'; ySweep.style.width = '0%'; ySweep.style.opacity = ''; }
+
+  findState.currentlyPlaying = null;
+}
+
+function playFindAudioOn(which) {
+  return new Promise((resolve) => {
+    stopFindPlayback();
+    const audio = which === 'target' ? els.wordAudioEl : els.userAudioEl;
+    const btn   = which === 'target' ? els.findTargetBtn : els.findYouBtn;
+    if (!audio) { resolve(); return; }
+
+    findState.currentlyPlaying = which;
+    btn.classList.add('playing');
+
+    const sweep = btn.querySelector('.sweep');
+    const setupSweep = () => {
+      const dur = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 1.2;
+      sweep.style.transition = 'none';
+      sweep.style.width = '0%';
+      void sweep.offsetWidth;
+      sweep.style.transition = `width ${dur}s linear`;
+      sweep.style.width = '100%';
+    };
+    if (audio.readyState >= 1) setupSweep();
+    else audio.addEventListener('loadedmetadata', setupSweep, { once: true });
+
+    const finish = () => {
+      btn.classList.remove('playing');
+      sweep.style.transition = 'opacity 0.3s';
+      sweep.style.opacity = '0';
+      setTimeout(() => {
+        sweep.style.transition = 'none';
+        sweep.style.width = '0%';
+        sweep.style.opacity = '';
+      }, 350);
+      if (findState.currentlyPlaying === which) findState.currentlyPlaying = null;
+      resolve();
+    };
+
+    audio.onended = finish;
+    audio.onerror = finish;
+
+    try {
+      audio.currentTime = 0;
+      const p = audio.play();
+      if (p && p.catch) p.catch(finish);
+    } catch (e) { finish(); }
+  });
+}
+
+/* =========================================================
    iOS AUDIO UNLOCK HELPER — must be called SYNCHRONOUSLY
    from inside a user gesture (mousedown / touchstart). Plays
    a tiny silent WAV; once that play() resolves, iOS treats
@@ -2071,6 +2885,67 @@ els.youBtn.addEventListener('click', () => {
 // New sentence
 els.newBtn.addEventListener('click', resetAll);
 
+/* =========================================================
+   FIND-A-WORD EVENT BINDINGS
+   ========================================================= */
+// Toggle entry / exit
+els.findWordBtn.addEventListener('click', () => {
+  if (state.busy && state.mode !== 'find') return;
+  if (state.mode === 'find') {
+    exitFindMode();
+  } else {
+    // only allow entering find-mode from the speak phase
+    if (state.phase !== 'speak') return;
+    enterFindMode();
+  }
+});
+
+// Find-mode repeat mic — same press/release pattern as the main repeat mic.
+// state.mode === 'find' routes the onstop callback to handleFindRepeatDone.
+els.findRepeatMic.addEventListener('mousedown', () => {
+  if (state.mode !== 'find') return;
+  unlockAudioOnce();
+  startRecording('repeat');
+});
+els.findRepeatMic.addEventListener('mouseup', stopRecording);
+els.findRepeatMic.addEventListener('mouseleave', () => {
+  if (state.recording === 'repeat') stopRecording();
+});
+els.findRepeatMic.addEventListener('touchstart', e => {
+  if (state.mode !== 'find') return;
+  unlockAudioOnce();
+  e.preventDefault();
+  startRecording('repeat');
+}, { passive: false });
+els.findRepeatMic.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); }, { passive: false });
+els.findRepeatMic.addEventListener('touchcancel', stopRecording);
+
+// Find-result word play button (the ▶ under the big word)
+els.findWordPlay.addEventListener('click', e => {
+  e.stopPropagation();
+  unlockAudioOnce();
+  if (!findState.currentWord) return;
+  playFindAudioOn('target');
+});
+
+// Find-mode A/B compare
+els.findTargetBtn.addEventListener('click', () => {
+  if (els.findTargetBtn.disabled) return;
+  playFindAudioOn('target');
+});
+els.findYouBtn.addEventListener('click', () => {
+  if (els.findYouBtn.disabled) return;
+  playFindAudioOn('you');
+});
+
+// "Try Again" — only shown when GPT returned ???
+els.findTryAgain.addEventListener('click', () => {
+  findResetForRetry();
+});
+
+// "Back to speaking" — from inside the find-result panel
+els.findBackBtn.addEventListener('click', exitFindMode);
+
 // Reset emotional context (clears history but keeps current sentence)
 function flashContextCleared() {
   clearHistory();
@@ -2126,12 +3001,28 @@ document.addEventListener('keydown', e => {
   if (e.code === 'Space') {
     e.preventDefault();
     if (e.repeat) return; // ignore auto-repeat from holding the key
-    if (state.phase === 'speak') startRecording('speak');
+    if (state.phase === 'speak') {
+      // In find-mode after the result is showing, SPACE records the user's
+      // repeat on the find-mode medium mic. Before the result, SPACE records
+      // the description on the main speak mic (azure-styled).
+      if (state.mode === 'find' && els.phaseSpeak.classList.contains('find-result-shown')) {
+        if (findState.currentWord) startRecording('repeat');
+      } else {
+        startRecording('speak');
+      }
+    }
     else if (state.phase === 'mirror') startRecording('repeat');
     return;
   }
 
   if (e.repeat) return;
+
+  // ESC exits find-mode quickly
+  if (e.key === 'Escape' && state.mode === 'find') {
+    e.preventDefault();
+    exitFindMode();
+    return;
+  }
 
   if (state.phase !== 'mirror') return;
 
